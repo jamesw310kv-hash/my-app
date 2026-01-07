@@ -18,7 +18,7 @@
         }
         body {
             background: radial-gradient(circle at center, #1e293b, #020617);
-            min-height: 100-screen;
+            min-height: 100vh;
         }
         input[type="date"]::-webkit-calendar-picker-indicator {
             filter: invert(1) opacity(0.5);
@@ -29,6 +29,13 @@
         .custom-scrollbar::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 10px;
+        }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 1.5em 1.5em;
         }
     </style>
 </head>
@@ -45,14 +52,35 @@
             "from-amber-600/20 to-orange-600/20"
         ];
 
+        const STATUS_MAP = {
+            pending: { label: '未寄出', color: 'bg-slate-500/20 text-slate-400' },
+            sent: { label: '已寄出', color: 'bg-blue-500/40 text-blue-200' },
+            received: { label: '已收到', color: 'bg-emerald-500/40 text-emerald-200' }
+        };
+
         function App() {
             // 核心資料：保持 key 值一致以保留舊資料
             const [tasks, setTasks] = useState(() => {
                 const saved = localStorage.getItem('man_machine_tracker');
-                return saved ? JSON.parse(saved) : [];
+                if (!saved) return [];
+                const parsed = JSON.parse(saved);
+                // 向後相容：將舊的 completed 轉為新的 status
+                return parsed.map(t => ({
+                    ...t,
+                    subtasks: t.subtasks.map(s => {
+                        if (s.status) return s;
+                        return {
+                            ...s,
+                            status: s.completed ? 'received' : 'pending',
+                            sentDate: '',
+                            receivedDate: ''
+                        };
+                    })
+                }));
             });
 
             const [searchTerm, setSearchTerm] = useState("");
+            const [statusFilter, setStatusFilter] = useState("all");
             const [newProjTitle, setNewProjTitle] = useState("");
             const [activeBulkId, setActiveBulkId] = useState(null);
             const [bulkText, setBulkText] = useState("");
@@ -63,13 +91,18 @@
 
             // 搜尋與排序邏輯
             const filteredTasks = useMemo(() => {
-                let result = tasks.filter(t => 
-                    t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    t.subtasks.some(s => s.text.toLowerCase().includes(searchTerm.toLowerCase()))
-                );
+                let result = tasks.filter(t => {
+                    const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                         t.subtasks.some(s => s.text.toLowerCase().includes(searchTerm.toLowerCase()));
+                    
+                    const matchesStatus = statusFilter === "all" || 
+                                         t.subtasks.some(s => s.status === statusFilter);
+                    
+                    return matchesSearch && matchesStatus;
+                });
                 // 置頂的排前面
                 return [...result].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
-            }, [tasks, searchTerm]);
+            }, [tasks, searchTerm, statusFilter]);
 
             const addProject = (e) => {
                 e.preventDefault();
@@ -95,9 +128,36 @@
             const handleBulkAdd = (projectId) => {
                 const lines = bulkText.split('\n').filter(line => line.trim() !== "");
                 if (lines.length === 0) { setActiveBulkId(null); return; }
-                const newSub = lines.map((text, i) => ({ id: Date.now() + i, text: text.trim(), completed: false }));
+                const newSub = lines.map((text, i) => ({ 
+                    id: Date.now() + i, 
+                    text: text.trim(), 
+                    status: 'pending',
+                    sentDate: '',
+                    receivedDate: ''
+                }));
                 setTasks(tasks.map(t => t.id === projectId ? { ...t, subtasks: [...t.subtasks, ...newSub] } : t));
                 setBulkText(""); setActiveBulkId(null);
+            };
+
+            const updateSubtaskStatus = (taskId, subId, newStatus) => {
+                const today = new Date().toLocaleDateString('zh-TW');
+                setTasks(tasks.map(t => {
+                    if (t.id === taskId) {
+                        return {
+                            ...t,
+                            subtasks: t.subtasks.map(s => {
+                                if (s.id === subId) {
+                                    const updated = { ...s, status: newStatus };
+                                    if (newStatus === 'sent' && !s.sentDate) updated.sentDate = today;
+                                    if (newStatus === 'received' && !s.receivedDate) updated.receivedDate = today;
+                                    return updated;
+                                }
+                                return s;
+                            })
+                        };
+                    }
+                    return t;
+                }));
             };
 
             return (
@@ -107,19 +167,35 @@
                             <h1 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
                                 人機上班專用任務追蹤
                             </h1>
-                            <p className="text-slate-500 text-xs font-bold tracking-[0.3em] uppercase mt-1">Advanced Workflow Engine v2.0</p>
+                            <p className="text-slate-500 text-xs font-bold tracking-[0.3em] uppercase mt-1">Advanced Workflow Engine v2.1</p>
                         </div>
                         
-                        {/* 搜尋列 */}
-                        <div className="relative group">
-                            <input 
-                                type="text"
-                                placeholder="搜尋任務或專案..."
-                                className="bg-white/5 border border-white/10 rounded-2xl px-5 py-2 text-sm w-full md:w-64 outline-none focus:border-blue-500/50 transition-all"
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                            />
-                            <span className="absolute right-4 top-2.5 opacity-30 group-focus-within:opacity-100 transition-opacity">🔍</span>
+                        <div className="flex flex-col md:flex-row gap-4">
+                            {/* 狀態過濾 */}
+                            <div className="relative">
+                                <select 
+                                    className="bg-white/5 border border-white/10 rounded-2xl px-5 py-2 text-sm text-slate-300 w-full md:w-40 outline-none focus:border-blue-500/50 transition-all cursor-pointer pr-10"
+                                    value={statusFilter}
+                                    onChange={e => setStatusFilter(e.target.value)}
+                                >
+                                    <option value="all">所有狀態</option>
+                                    <option value="pending">含未寄出</option>
+                                    <option value="sent">含已寄出</option>
+                                    <option value="received">含已收到</option>
+                                </select>
+                            </div>
+
+                            {/* 搜尋列 */}
+                            <div className="relative group">
+                                <input 
+                                    type="text"
+                                    placeholder="搜尋任務或專案..."
+                                    className="bg-white/5 border border-white/10 rounded-2xl px-5 py-2 text-sm w-full md:w-64 outline-none focus:border-blue-500/50 transition-all"
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                />
+                                <span className="absolute right-4 top-2.5 opacity-30 group-focus-within:opacity-100 transition-opacity">🔍</span>
+                            </div>
                         </div>
                     </header>
 
@@ -139,7 +215,7 @@
                     {/* 專案列表 */}
                     <div className="grid grid-cols-1 gap-8">
                         {filteredTasks.map((task) => {
-                            const doneCount = task.subtasks.filter(s => s.completed).length;
+                            const doneCount = task.subtasks.filter(s => s.status === 'received').length;
                             const totalCount = task.subtasks.length;
                             const progress = totalCount === 0 ? 0 : Math.round((doneCount / totalCount) * 100);
 
@@ -178,7 +254,7 @@
                                         {/* 進度條 */}
                                         <div className="mb-6">
                                             <div className="flex justify-between text-[10px] font-black mb-2 tracking-widest text-white/40 uppercase">
-                                                <span>Progress</span>
+                                                <span>Overall Received</span>
                                                 <span>{progress}%</span>
                                             </div>
                                             <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden">
@@ -197,9 +273,14 @@
                                             >
                                                 {task.isExpanded ? "收起細項 ▲" : `展開 ${totalCount} 個任務 ▼`}
                                             </button>
-                                            <span className="text-[10px] font-bold text-white/20 uppercase tracking-tighter">
-                                                {doneCount} / {totalCount} Tasks Done
-                                            </span>
+                                            <div className="flex gap-2">
+                                                <span className="text-[10px] font-bold text-white/20 uppercase tracking-tighter">
+                                                    {task.subtasks.filter(s => s.status === 'sent').length} Sent
+                                                </span>
+                                                <span className="text-[10px] font-bold text-emerald-500/40 uppercase tracking-tighter">
+                                                    {doneCount} Received
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -220,28 +301,42 @@
                                             {/* 子任務 */}
                                             <div className="space-y-4">
                                                 {task.subtasks.map(sub => (
-                                                    <div key={sub.id} className="flex items-center gap-4 group/item">
-                                                        <div 
-                                                            onClick={() => {
-                                                                const newSub = task.subtasks.map(s => s.id === sub.id ? {...s, completed: !s.completed} : s);
+                                                    <div key={sub.id} className="flex flex-col gap-1 group/item">
+                                                        <div className="flex items-center gap-4">
+                                                            {/* 狀態切換按鈕 */}
+                                                            <div className="flex gap-1 bg-black/20 p-1 rounded-xl border border-white/5">
+                                                                {Object.entries(STATUS_MAP).map(([key, value]) => (
+                                                                    <button
+                                                                        key={key}
+                                                                        onClick={() => updateSubtaskStatus(task.id, sub.id, key)}
+                                                                        className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${sub.status === key ? value.color : 'text-white/20 hover:text-white/40'}`}
+                                                                    >
+                                                                        {value.label}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+
+                                                            <input 
+                                                                className={`text-base bg-transparent border-none focus:ring-0 w-full transition-all ${sub.status === 'received' ? 'line-through text-white/20 italic' : 'text-white/80'}`}
+                                                                value={sub.text}
+                                                                onChange={e => {
+                                                                    const newSub = task.subtasks.map(s => s.id === sub.id ? {...s, text: e.target.value} : s);
+                                                                    updateTask(task.id, { subtasks: newSub });
+                                                                }}
+                                                            />
+                                                            <button onClick={() => {
+                                                                const newSub = task.subtasks.filter(s => s.id !== sub.id);
                                                                 updateTask(task.id, { subtasks: newSub });
-                                                            }}
-                                                            className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all ${sub.completed ? 'bg-white border-white' : 'bg-transparent border-white/20 hover:border-white'}`}
-                                                        >
-                                                            {sub.completed && <span className="text-slate-900 text-[10px] font-black">✓</span>}
+                                                            }} className="text-white/5 hover:text-red-400 opacity-0 group-hover/item:opacity-100 transition-all">✕</button>
                                                         </div>
-                                                        <input 
-                                                            className={`text-base bg-transparent border-none focus:ring-0 w-full transition-all ${sub.completed ? 'line-through text-white/20 italic' : 'text-white/80'}`}
-                                                            value={sub.text}
-                                                            onChange={e => {
-                                                                const newSub = task.subtasks.map(s => s.id === sub.id ? {...s, text: e.target.value} : s);
-                                                                updateTask(task.id, { subtasks: newSub });
-                                                            }}
-                                                        />
-                                                        <button onClick={() => {
-                                                            const newSub = task.subtasks.filter(s => s.id !== sub.id);
-                                                            updateTask(task.id, { subtasks: newSub });
-                                                        }} className="text-white/5 hover:text-red-400 opacity-0 group-hover/item:opacity-100 transition-all">✕</button>
+                                                        
+                                                        {/* 日期標記 */}
+                                                        {(sub.sentDate || sub.receivedDate) && (
+                                                            <div className="ml-24 flex gap-4 text-[9px] font-bold tracking-wider uppercase">
+                                                                {sub.sentDate && <span className="text-blue-400/50">Sent: {sub.sentDate}</span>}
+                                                                {sub.receivedDate && <span className="text-emerald-500/50">Recv: {sub.receivedDate}</span>}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 ))}
                                             </div>
@@ -292,7 +387,7 @@
                     </div>
                     
                     <footer className="mt-20 text-center opacity-20 text-[10px] font-black tracking-[0.5em] uppercase">
-                        End of Transmission • Data Localized
+                        End of Transmission • Workflow Engine Active
                     </footer>
                 </div>
             );
