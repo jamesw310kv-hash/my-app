@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>人機上班專用任務追蹤 - Pro Max</title>
+    <title>人機上班專用任務追蹤 - Grid Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -15,6 +15,12 @@
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.15);
             box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
+        }
+        .glass-modal {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         body {
             background: radial-gradient(circle at center, #1e293b, #020617);
@@ -30,12 +36,8 @@
             background: rgba(255, 255, 255, 0.1);
             border-radius: 10px;
         }
-        select {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 0.5rem center;
-            background-size: 1.5em 1.5em;
+        .status-cycle-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
     </style>
 </head>
@@ -52,36 +54,47 @@
             "from-amber-600/20 to-orange-600/20"
         ];
 
-        const STATUS_MAP = {
-            pending: { label: '未寄出', color: 'bg-slate-500/20 text-slate-400' },
-            sent: { label: '已寄出', color: 'bg-blue-500/40 text-blue-200' },
-            received: { label: '已收到', color: 'bg-emerald-500/40 text-emerald-200' }
+        const STATUS_CONFIG = {
+            pending: { 
+                label: '未寄出', 
+                bg: 'bg-gradient-to-r from-slate-600 to-slate-700', 
+                text: 'text-white',
+                next: 'sent'
+            },
+            sent: { 
+                label: '已寄出', 
+                bg: 'bg-gradient-to-r from-blue-500 to-cyan-500', 
+                text: 'text-white',
+                next: 'received'
+            },
+            received: { 
+                label: '已收到', 
+                bg: 'bg-gradient-to-r from-emerald-500 to-teal-500', 
+                text: 'text-white',
+                next: 'pending'
+            }
         };
 
         function App() {
-            // 核心資料：保持 key 值一致以保留舊資料
             const [tasks, setTasks] = useState(() => {
                 const saved = localStorage.getItem('man_machine_tracker');
                 if (!saved) return [];
                 const parsed = JSON.parse(saved);
-                // 向後相容：將舊的 completed 轉為新的 status
                 return parsed.map(t => ({
                     ...t,
-                    subtasks: t.subtasks.map(s => {
-                        if (s.status) return s;
-                        return {
-                            ...s,
-                            status: s.completed ? 'received' : 'pending',
-                            sentDate: '',
-                            receivedDate: ''
-                        };
-                    })
+                    subtasks: t.subtasks.map(s => ({
+                        ...s,
+                        status: s.status || (s.completed ? 'received' : 'pending'),
+                        sentDate: s.sentDate || '',
+                        receivedDate: s.receivedDate || ''
+                    }))
                 }));
             });
 
             const [searchTerm, setSearchTerm] = useState("");
             const [statusFilter, setStatusFilter] = useState("all");
             const [newProjTitle, setNewProjTitle] = useState("");
+            const [selectedTaskId, setSelectedTaskId] = useState(null);
             const [activeBulkId, setActiveBulkId] = useState(null);
             const [bulkText, setBulkText] = useState("");
 
@@ -89,20 +102,23 @@
                 localStorage.setItem('man_machine_tracker', JSON.stringify(tasks));
             }, [tasks]);
 
-            // 搜尋與排序邏輯
+            // 搜尋與篩選邏輯：支援 關鍵字 + 特定狀態細項
             const filteredTasks = useMemo(() => {
                 let result = tasks.filter(t => {
-                    const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                         t.subtasks.some(s => s.text.toLowerCase().includes(searchTerm.toLowerCase()));
+                    const searchLower = searchTerm.toLowerCase();
+                    const hasMatchingSubtask = t.subtasks.some(s => 
+                        s.text.toLowerCase().includes(searchLower) && 
+                        (statusFilter === "all" || s.status === statusFilter)
+                    );
+                    const titleMatches = t.title.toLowerCase().includes(searchLower) && 
+                                       (statusFilter === "all" || t.subtasks.some(s => s.status === statusFilter));
                     
-                    const matchesStatus = statusFilter === "all" || 
-                                         t.subtasks.some(s => s.status === statusFilter);
-                    
-                    return matchesSearch && matchesStatus;
+                    return hasMatchingSubtask || titleMatches;
                 });
-                // 置頂的排前面
                 return [...result].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
             }, [tasks, searchTerm, statusFilter]);
+
+            const currentTask = useMemo(() => tasks.find(t => t.id === selectedTaskId), [tasks, selectedTaskId]);
 
             const addProject = (e) => {
                 e.preventDefault();
@@ -110,7 +126,6 @@
                 const newProj = { 
                     id: Date.now(), 
                     title: newProjTitle, 
-                    isExpanded: true, 
                     isPinned: false,
                     subtasks: [],
                     notes: "",
@@ -121,8 +136,26 @@
                 setNewProjTitle("");
             };
 
-            const updateTask = (id, fields) => {
-                setTasks(tasks.map(t => t.id === id ? { ...t, ...fields } : t));
+            const cycleStatus = (taskId, subId) => {
+                const today = new Date().toLocaleDateString('zh-TW');
+                setTasks(tasks.map(t => {
+                    if (t.id === taskId) {
+                        return {
+                            ...t,
+                            subtasks: t.subtasks.map(s => {
+                                if (s.id === subId) {
+                                    const nextStatus = STATUS_CONFIG[s.status].next;
+                                    const updated = { ...s, status: nextStatus };
+                                    if (nextStatus === 'sent' && !s.sentDate) updated.sentDate = today;
+                                    if (nextStatus === 'received' && !s.receivedDate) updated.receivedDate = today;
+                                    return updated;
+                                }
+                                return s;
+                            })
+                        };
+                    }
+                    return t;
+                }));
             };
 
             const handleBulkAdd = (projectId) => {
@@ -139,255 +172,235 @@
                 setBulkText(""); setActiveBulkId(null);
             };
 
-            const updateSubtaskStatus = (taskId, subId, newStatus) => {
-                const today = new Date().toLocaleDateString('zh-TW');
-                setTasks(tasks.map(t => {
-                    if (t.id === taskId) {
-                        return {
-                            ...t,
-                            subtasks: t.subtasks.map(s => {
-                                if (s.id === subId) {
-                                    const updated = { ...s, status: newStatus };
-                                    if (newStatus === 'sent' && !s.sentDate) updated.sentDate = today;
-                                    if (newStatus === 'received' && !s.receivedDate) updated.receivedDate = today;
-                                    return updated;
-                                }
-                                return s;
-                            })
-                        };
-                    }
-                    return t;
-                }));
-            };
-
             return (
-                <div className="max-w-4xl mx-auto py-12 px-6">
-                    <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div className="max-w-6xl mx-auto py-10 px-6">
+                    <header className="mb-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                         <div>
-                            <h1 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+                            <h1 className="text-3xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
                                 人機上班專用任務追蹤
                             </h1>
-                            <p className="text-slate-500 text-xs font-bold tracking-[0.3em] uppercase mt-1">Advanced Workflow Engine v2.1</p>
+                            <p className="text-slate-500 text-[10px] font-bold tracking-[0.3em] uppercase mt-1">Grid Management System v3.0</p>
                         </div>
                         
-                        <div className="flex flex-col md:flex-row gap-4">
-                            {/* 狀態過濾 */}
-                            <div className="relative">
-                                <select 
-                                    className="bg-white/5 border border-white/10 rounded-2xl px-5 py-2 text-sm text-slate-300 w-full md:w-40 outline-none focus:border-blue-500/50 transition-all cursor-pointer pr-10"
-                                    value={statusFilter}
-                                    onChange={e => setStatusFilter(e.target.value)}
-                                >
-                                    <option value="all">所有狀態</option>
-                                    <option value="pending">含未寄出</option>
-                                    <option value="sent">含已寄出</option>
-                                    <option value="received">含已收到</option>
-                                </select>
-                            </div>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <select 
+                                className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-slate-300 outline-none focus:border-blue-500/50 transition-all cursor-pointer"
+                                value={statusFilter}
+                                onChange={e => setStatusFilter(e.target.value)}
+                            >
+                                <option value="all">所有狀態顯示</option>
+                                <option value="pending">篩選：有未寄出項</option>
+                                <option value="sent">篩選：有已寄出項</option>
+                                <option value="received">篩選：有已收到項</option>
+                            </select>
 
-                            {/* 搜尋列 */}
                             <div className="relative group">
                                 <input 
                                     type="text"
-                                    placeholder="搜尋任務或專案..."
-                                    className="bg-white/5 border border-white/10 rounded-2xl px-5 py-2 text-sm w-full md:w-64 outline-none focus:border-blue-500/50 transition-all"
+                                    placeholder="搜尋細項或專案..."
+                                    className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm w-full sm:w-64 outline-none focus:border-blue-500/50 transition-all"
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
                                 />
-                                <span className="absolute right-4 top-2.5 opacity-30 group-focus-within:opacity-100 transition-opacity">🔍</span>
+                                <span className="absolute right-3 top-2 opacity-30">🔍</span>
                             </div>
                         </div>
                     </header>
 
                     {/* 新增專案 */}
-                    <form onSubmit={addProject} className="mb-12 flex gap-3 p-2 rounded-3xl glass border-white/10 shadow-2xl">
+                    <form onSubmit={addProject} className="mb-10 flex gap-2">
                         <input 
-                            className="flex-1 bg-transparent border-none text-white placeholder-slate-600 px-6 py-4 focus:ring-0 outline-none text-lg"
-                            placeholder="今天的人機協作目標是？"
+                            className="flex-1 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-600 px-5 py-3 focus:ring-1 focus:ring-blue-500 outline-none"
+                            placeholder="建立新專案矩陣..."
                             value={newProjTitle}
                             onChange={e => setNewProjTitle(e.target.value)}
                         />
-                        <button className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black hover:bg-blue-500 transition-all active:scale-95 shadow-lg">
-                            ＋
-                        </button>
+                        <button className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-500 transition-all">＋</button>
                     </form>
 
-                    {/* 專案列表 */}
-                    <div className="grid grid-cols-1 gap-8">
+                    {/* 矩陣列表 */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         {filteredTasks.map((task) => {
-                            const doneCount = task.subtasks.filter(s => s.status === 'received').length;
-                            const totalCount = task.subtasks.length;
-                            const progress = totalCount === 0 ? 0 : Math.round((doneCount / totalCount) * 100);
+                            const done = task.subtasks.filter(s => s.status === 'received').length;
+                            const total = task.subtasks.length;
+                            const progress = total === 0 ? 0 : Math.round((done / total) * 100);
 
                             return (
-                                <div key={task.id} className={`glass rounded-[2.5rem] overflow-hidden transition-all duration-500 bg-gradient-to-br ${GRADIENTS[task.gradientIndex || 0]} ${task.isPinned ? 'ring-2 ring-blue-500/50' : ''}`}>
-                                    {/* 專案頭部 */}
-                                    <div className="p-7">
-                                        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                                            <div className="flex items-center gap-4 flex-1">
-                                                <button 
-                                                    onClick={() => updateTask(task.id, { isPinned: !task.isPinned })}
-                                                    className={`text-xl transition-colors ${task.isPinned ? 'text-yellow-400' : 'text-white/20 hover:text-white/40'}`}
-                                                >
-                                                    {task.isPinned ? "★" : "☆"}
-                                                </button>
-                                                <input 
-                                                    className="text-2xl font-bold text-white bg-transparent border-none focus:ring-0 w-full placeholder-white/20"
-                                                    value={task.title}
-                                                    onChange={e => updateTask(task.id, { title: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex flex-col items-end">
-                                                    <span className="text-[10px] text-slate-400 font-bold mb-1 tracking-tighter">DEADLINE</span>
-                                                    <input 
-                                                        type="date"
-                                                        className="bg-white/5 text-xs font-bold text-white p-1 rounded outline-none border border-white/10"
-                                                        value={task.deadline}
-                                                        onChange={e => updateTask(task.id, { deadline: e.target.value })}
-                                                    />
-                                                </div>
-                                                <button onClick={() => confirm('刪除此專案？') && setTasks(tasks.filter(t => t.id !== task.id))} className="text-white/10 hover:text-red-500 px-2 transition-colors text-xl">✕</button>
-                                            </div>
+                                <div 
+                                    key={task.id} 
+                                    onClick={() => setSelectedTaskId(task.id)}
+                                    className={`glass p-5 rounded-3xl cursor-pointer hover:scale-[1.02] transition-all group relative bg-gradient-to-br ${GRADIENTS[task.gradientIndex || 0]}`}
+                                >
+                                    <div className="flex justify-between items-start mb-3">
+                                        <h3 className="font-bold text-lg text-white leading-tight truncate pr-4">{task.title}</h3>
+                                        {task.isPinned && <span className="text-yellow-400 text-sm">★</span>}
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className="flex-1 h-1 bg-black/20 rounded-full overflow-hidden">
+                                            <div className="h-full bg-blue-400" style={{ width: `${progress}%` }}></div>
                                         </div>
-
-                                        {/* 進度條 */}
-                                        <div className="mb-6">
-                                            <div className="flex justify-between text-[10px] font-black mb-2 tracking-widest text-white/40 uppercase">
-                                                <span>Overall Received</span>
-                                                <span>{progress}%</span>
-                                            </div>
-                                            <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden">
-                                                <div 
-                                                    className="h-full bg-gradient-to-r from-blue-400 to-emerald-400 transition-all duration-1000"
-                                                    style={{ width: `${progress}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-
-                                        {/* 展開切換與簡短統計 */}
-                                        <div className="flex justify-between items-center">
-                                            <button 
-                                                onClick={() => updateTask(task.id, { isExpanded: !task.isExpanded })}
-                                                className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-2"
-                                            >
-                                                {task.isExpanded ? "收起細項 ▲" : `展開 ${totalCount} 個任務 ▼`}
-                                            </button>
-                                            <div className="flex gap-2">
-                                                <span className="text-[10px] font-bold text-white/20 uppercase tracking-tighter">
-                                                    {task.subtasks.filter(s => s.status === 'sent').length} Sent
-                                                </span>
-                                                <span className="text-[10px] font-bold text-emerald-500/40 uppercase tracking-tighter">
-                                                    {doneCount} Received
-                                                </span>
-                                            </div>
-                                        </div>
+                                        <span className="text-[10px] font-black text-white/40">{progress}%</span>
                                     </div>
 
-                                    {/* 展開內容 */}
-                                    {task.isExpanded && (
-                                        <div className="px-10 pb-10 space-y-8 animate-in slide-in-from-top-4 duration-300">
-                                            {/* 備註區 */}
-                                            <div className="bg-black/30 rounded-3xl p-6 border border-white/5">
-                                                <label className="text-[10px] font-black text-blue-400/60 uppercase tracking-widest block mb-2">Project Notes</label>
-                                                <textarea 
-                                                    className="w-full bg-transparent border-none text-sm text-slate-300 placeholder-white/10 focus:ring-0 resize-none h-20 leading-relaxed custom-scrollbar"
-                                                    placeholder="在這裡記錄一些人機協作的靈感或主管的需求..."
-                                                    value={task.notes}
-                                                    onChange={e => updateTask(task.id, { notes: e.target.value })}
-                                                />
+                                    <div className="space-y-1 overflow-hidden h-12">
+                                        {task.subtasks.slice(0, 2).map(s => (
+                                            <div key={s.id} className="flex items-center gap-2 text-[10px] opacity-60">
+                                                <span className={`w-1.5 h-1.5 rounded-full ${s.status === 'received' ? 'bg-emerald-400' : s.status === 'sent' ? 'bg-blue-400' : 'bg-slate-400'}`}></span>
+                                                <span className="truncate">{s.text}</span>
                                             </div>
+                                        ))}
+                                        {total > 2 && <p className="text-[9px] text-white/20 mt-1">還有 {total - 2} 個細項...</p>}
+                                    </div>
 
-                                            {/* 子任務 */}
-                                            <div className="space-y-4">
-                                                {task.subtasks.map(sub => (
-                                                    <div key={sub.id} className="flex flex-col gap-1 group/item">
-                                                        <div className="flex items-center gap-4">
-                                                            {/* 狀態切換按鈕 */}
-                                                            <div className="flex gap-1 bg-black/20 p-1 rounded-xl border border-white/5">
-                                                                {Object.entries(STATUS_MAP).map(([key, value]) => (
-                                                                    <button
-                                                                        key={key}
-                                                                        onClick={() => updateSubtaskStatus(task.id, sub.id, key)}
-                                                                        className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${sub.status === key ? value.color : 'text-white/20 hover:text-white/40'}`}
-                                                                    >
-                                                                        {value.label}
-                                                                    </button>
-                                                                ))}
-                                                            </div>
-
-                                                            <input 
-                                                                className={`text-base bg-transparent border-none focus:ring-0 w-full transition-all ${sub.status === 'received' ? 'line-through text-white/20 italic' : 'text-white/80'}`}
-                                                                value={sub.text}
-                                                                onChange={e => {
-                                                                    const newSub = task.subtasks.map(s => s.id === sub.id ? {...s, text: e.target.value} : s);
-                                                                    updateTask(task.id, { subtasks: newSub });
-                                                                }}
-                                                            />
-                                                            <button onClick={() => {
-                                                                const newSub = task.subtasks.filter(s => s.id !== sub.id);
-                                                                updateTask(task.id, { subtasks: newSub });
-                                                            }} className="text-white/5 hover:text-red-400 opacity-0 group-hover/item:opacity-100 transition-all">✕</button>
-                                                        </div>
-                                                        
-                                                        {/* 日期標記 */}
-                                                        {(sub.sentDate || sub.receivedDate) && (
-                                                            <div className="ml-24 flex gap-4 text-[9px] font-bold tracking-wider uppercase">
-                                                                {sub.sentDate && <span className="text-blue-400/50">Sent: {sub.sentDate}</span>}
-                                                                {sub.receivedDate && <span className="text-emerald-500/50">Recv: {sub.receivedDate}</span>}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            {/* 批量/新增區 */}
-                                            <div className="pt-6 border-t border-white/5">
-                                                {activeBulkId === task.id ? (
-                                                    <div className="space-y-4">
-                                                        <textarea 
-                                                            className="w-full h-40 p-5 bg-black/40 border border-white/10 rounded-3xl text-white text-sm outline-none focus:border-white/30 transition-all custom-scrollbar"
-                                                            placeholder="在此貼上多行任務（一行一個）..."
-                                                            value={bulkText}
-                                                            onChange={e => setBulkText(e.target.value)}
-                                                            autoFocus
-                                                        />
-                                                        <div className="flex gap-2">
-                                                            <button onClick={() => handleBulkAdd(task.id)} className="bg-white text-slate-900 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest">注入任務系統</button>
-                                                            <button onClick={() => setActiveBulkId(null)} className="text-white/40 px-6 py-2 text-xs font-bold hover:text-white transition-colors">取消</button>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex items-center gap-4">
-                                                        <input 
-                                                            className="flex-1 bg-white/5 border border-dashed border-white/10 rounded-2xl px-5 py-3 text-sm placeholder-white/20 focus:border-white/40 outline-none"
-                                                            placeholder="＋ 輸入任務後按 Enter..."
-                                                            onKeyDown={e => {
-                                                                if (e.key === 'Enter') {
-                                                                    setBulkText(e.target.value);
-                                                                    handleBulkAdd(task.id);
-                                                                    e.target.value = "";
-                                                                }
-                                                            }}
-                                                        />
-                                                        <button 
-                                                            onClick={() => setActiveBulkId(task.id)}
-                                                            className="text-[10px] font-black uppercase tracking-widest bg-white/5 px-4 py-3 rounded-2xl hover:bg-white/10 transition-all"
-                                                        >
-                                                            ⚡ 批量模式
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
+                                    <div className="mt-4 flex justify-between items-center text-[9px] font-bold text-white/30 uppercase tracking-widest">
+                                        <span>{task.deadline || "無期限"}</span>
+                                        <span>Details →</span>
+                                    </div>
                                 </div>
                             );
                         })}
                     </div>
+
+                    {/* 詳細內容 Modal */}
+                    {selectedTaskId && currentTask && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+                            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedTaskId(null)}></div>
+                            <div className="glass-modal w-full max-w-2xl max-h-[90vh] rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col overflow-hidden animate-in zoom-in duration-300">
+                                {/* Modal Header */}
+                                <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/5">
+                                    <div className="flex-1">
+                                        <input 
+                                            className="text-2xl font-black text-white bg-transparent border-none focus:ring-0 w-full"
+                                            value={currentTask.title}
+                                            onChange={e => setTasks(tasks.map(t => t.id === currentTask.id ? {...t, title: e.target.value} : t))}
+                                        />
+                                        <div className="flex items-center gap-4 mt-2">
+                                            <input 
+                                                type="date"
+                                                className="bg-transparent text-xs font-bold text-blue-400 outline-none"
+                                                value={currentTask.deadline}
+                                                onChange={e => setTasks(tasks.map(t => t.id === currentTask.id ? {...t, deadline: e.target.value} : t))}
+                                            />
+                                            <button 
+                                                onClick={() => setTasks(tasks.map(t => t.id === currentTask.id ? {...t, isPinned: !t.isPinned} : t))}
+                                                className={`text-xs font-bold ${currentTask.isPinned ? 'text-yellow-400' : 'text-white/20'}`}
+                                            >
+                                                {currentTask.isPinned ? "已置頂" : "設為置頂"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setSelectedTaskId(null)} className="text-white/40 hover:text-white text-2xl p-2">✕</button>
+                                </div>
+
+                                {/* Modal Body */}
+                                <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+                                    {/* 備註 */}
+                                    <section>
+                                        <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-3">Project Notes</label>
+                                        <textarea 
+                                            className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-sm text-slate-300 focus:border-white/20 outline-none resize-none h-24"
+                                            placeholder="記錄專案細節..."
+                                            value={currentTask.notes}
+                                            onChange={e => setTasks(tasks.map(t => t.id === currentTask.id ? {...t, notes: e.target.value} : t))}
+                                        />
+                                    </section>
+
+                                    {/* 細項列表 */}
+                                    <section>
+                                        <div className="flex justify-between items-center mb-4">
+                                            <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Subtasks Status</label>
+                                            <button onClick={() => setActiveBulkId(currentTask.id)} className="text-[9px] font-black text-white/30 hover:text-white transition-colors">⚡ 批量模式</button>
+                                        </div>
+                                        
+                                        <div className="space-y-3">
+                                            {currentTask.subtasks.map(sub => (
+                                                <div key={sub.id} className="flex flex-col gap-1 p-3 rounded-2xl bg-white/5 border border-white/5 group">
+                                                    <div className="flex items-center gap-4">
+                                                        {/* 循環狀態按鈕 */}
+                                                        <button 
+                                                            onClick={() => cycleStatus(currentTask.id, sub.id)}
+                                                            className={`status-cycle-btn min-w-[70px] py-1.5 rounded-xl text-[10px] font-black shadow-lg uppercase ${STATUS_CONFIG[sub.status].bg} ${STATUS_CONFIG[sub.status].text}`}
+                                                        >
+                                                            {STATUS_CONFIG[sub.status].label}
+                                                        </button>
+
+                                                        <input 
+                                                            className={`flex-1 bg-transparent border-none text-sm outline-none focus:ring-0 ${sub.status === 'received' ? 'line-through text-white/20' : 'text-white'}`}
+                                                            value={sub.text}
+                                                            onChange={e => {
+                                                                const newSub = currentTask.subtasks.map(s => s.id === sub.id ? {...s, text: e.target.value} : s);
+                                                                setTasks(tasks.map(t => t.id === currentTask.id ? {...t, subtasks: newSub} : t));
+                                                            }}
+                                                        />
+                                                        
+                                                        <button 
+                                                            onClick={() => {
+                                                                const newSub = currentTask.subtasks.filter(s => s.id !== sub.id);
+                                                                setTasks(tasks.map(t => t.id === currentTask.id ? {...t, subtasks: newSub} : t));
+                                                            }}
+                                                            className="text-white/10 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >✕</button>
+                                                    </div>
+                                                    
+                                                    {/* 日期標記 */}
+                                                    {(sub.sentDate || sub.receivedDate) && (
+                                                        <div className="ml-[86px] flex gap-3 text-[8px] font-bold text-white/20 uppercase">
+                                                            {sub.sentDate && <span>Sent: {sub.sentDate}</span>}
+                                                            {sub.receivedDate && <span>Recv: {sub.receivedDate}</span>}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* 新增/批量 */}
+                                        <div className="mt-4">
+                                            {activeBulkId === currentTask.id ? (
+                                                <div className="space-y-3">
+                                                    <textarea 
+                                                        className="w-full h-32 p-4 bg-black/40 border border-white/10 rounded-2xl text-white text-xs outline-none focus:border-blue-500/50"
+                                                        placeholder="貼上一行一個任務..."
+                                                        value={bulkText}
+                                                        onChange={e => setBulkText(e.target.value)}
+                                                        autoFocus
+                                                    />
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => handleBulkAdd(currentTask.id)} className="bg-white text-black px-4 py-2 rounded-xl text-[10px] font-black uppercase">注入</button>
+                                                        <button onClick={() => setActiveBulkId(null)} className="text-white/40 px-4 py-2 text-[10px] font-bold hover:text-white">取消</button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <input 
+                                                    className="w-full bg-white/5 border border-dashed border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-white/30"
+                                                    placeholder="+ 輸入單個細項後按 Enter"
+                                                    onKeyDown={e => {
+                                                        if (e.key === 'Enter') {
+                                                            setBulkText(e.target.value);
+                                                            handleBulkAdd(currentTask.id);
+                                                            e.target.value = "";
+                                                        }
+                                                    }}
+                                                />
+                                            )}
+                                        </div>
+                                    </section>
+                                </div>
+                                
+                                <div className="p-6 bg-black/20 text-center">
+                                    <button 
+                                        onClick={() => confirm('刪除此專案？') && (setTasks(tasks.filter(t => t.id !== currentTask.id)), setSelectedTaskId(null))}
+                                        className="text-[10px] font-bold text-red-400/50 hover:text-red-500 transition-colors uppercase tracking-widest"
+                                    >
+                                        Delete Project Permanently
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     
                     <footer className="mt-20 text-center opacity-20 text-[10px] font-black tracking-[0.5em] uppercase">
-                        End of Transmission • Workflow Engine Active
+                        Transmission Complete • Matrix Grid Online
                     </footer>
                 </div>
             );
