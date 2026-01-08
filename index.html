@@ -19,8 +19,8 @@
         }
 
         body {
-            /* 背景設定為馬蹄灣 */
-            background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.4)), url('https://images.unsplash.com/photo-1500674425229-f69287537a84?auto=format&fit=crop&q=80&w=2000');
+            /* 修正背景設定為馬蹄灣 Horseshoe Bend */
+            background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.5)), url('https://images.unsplash.com/photo-1541079143405-3c9906d7fd9b?auto=format&fit=crop&q=80&w=2000');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -37,7 +37,7 @@
         }
 
         .glass-modal {
-            background: rgba(15, 23, 42, 0.92);
+            background: rgba(15, 23, 42, 0.95);
             backdrop-filter: blur(25px);
             -webkit-backdrop-filter: blur(25px);
             border: 1px solid rgba(255, 255, 255, 0.15);
@@ -68,21 +68,14 @@
             color: white;
         }
 
-        /* 加強日期輸入框樣式 */
         .date-input-enhanced {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 2px 8px;
-            border-radius: 6px;
+            padding: 2px 6px;
+            border-radius: 4px;
             color: white;
             font-size: 11px;
             outline: none;
-            transition: all 0.2s;
-        }
-
-        .date-input-enhanced:focus {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.4);
         }
     </style>
 </head>
@@ -120,13 +113,11 @@
             }
         };
 
-        // 輔助函式：將 YYYY/MM/DD 轉為 YYYY-MM-DD
         const formatDateForInput = (dateStr) => {
             if (!dateStr) return "";
             return dateStr.replace(/\//g, '-');
         };
 
-        // 輔助函式：將 YYYY-MM-DD 轉為 YYYY/MM/DD
         const formatDateForDisplay = (dateStr) => {
             if (!dateStr) return "";
             return dateStr.replace(/-/g, '/');
@@ -160,7 +151,7 @@
             const [statusFilter, setStatusFilter] = useState("all");
             const [newProjTitle, setNewProjTitle] = useState("");
             const [selectedTaskId, setSelectedTaskId] = useState(null);
-            const [selectedNoteId, setSelectedNoteId] = useState(null); // 用於彈出備註視窗
+            const [selectedNoteId, setSelectedNoteId] = useState(null);
             const [activeBulkId, setActiveBulkId] = useState(null);
             const [bulkText, setBulkText] = useState("");
 
@@ -207,22 +198,6 @@
                 return { daysInMonth, firstDay, year, month };
             }, [currentDate]);
 
-            const addProject = (e) => {
-                e.preventDefault();
-                if (!newProjTitle.trim()) return;
-                const newProj = { 
-                    id: Date.now(), 
-                    title: newProjTitle, 
-                    isPinned: false,
-                    subtasks: [],
-                    notes: "",
-                    deadline: "",
-                    gradientIndex: Math.floor(Math.random() * GRADIENTS.length)
-                };
-                setTasks([newProj, ...tasks]);
-                setNewProjTitle("");
-            };
-
             const cycleStatus = (taskId, subId) => {
                 const today = new Date().toISOString().split('T')[0].replace(/-/g, '/');
                 setTasks(tasks.map(t => {
@@ -258,37 +233,8 @@
                 }));
             };
 
-            const handleBulkAdd = (projectId) => {
-                const lines = bulkText.split('\n').filter(line => line.trim() !== "");
-                if (lines.length === 0) { setActiveBulkId(null); return; }
-                const newSub = lines.map((text, i) => ({ 
-                    id: Date.now() + i, 
-                    text: text.trim(), 
-                    status: 'pending',
-                    sentDate: '',
-                    receivedDate: ''
-                }));
-                setTasks(tasks.map(t => t.id === projectId ? { ...t, subtasks: [...t.subtasks, ...newSub] } : t));
-                setBulkText(""); setActiveBulkId(null);
-            };
-
-            const saveRecurringTask = () => {
-                if (!recForm.projectId || !recForm.text) return;
-                if (editingRecurringId) {
-                    setRecurringTasks(recurringTasks.map(t => t.id === editingRecurringId ? { ...t, ...recForm } : t));
-                } else {
-                    const newTask = { ...recForm, id: Date.now(), completions: [] };
-                    setRecurringTasks([...recurringTasks, newTask]);
-                }
-                setRecForm({ projectId: '', text: '', dayOfMonth: 1, notes: '' });
-                setEditingRecurringId(null);
-                setShowRecurringForm(false);
-            };
-
-            const startEditRecurring = (task) => {
-                setRecForm({ projectId: task.projectId, text: task.text, dayOfMonth: task.dayOfMonth, notes: task.notes });
-                setEditingRecurringId(task.id);
-                setShowRecurringForm(true);
+            const changeMonth = (offset) => {
+                setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1));
             };
 
             const toggleRecurringDone = (id) => {
@@ -305,10 +251,6 @@
                 }));
             };
 
-            const changeMonth = (offset) => {
-                setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1));
-            };
-
             return (
                 <div className="max-w-[1600px] mx-auto py-12 px-8">
                     <header className="mb-12 flex flex-col xl:flex-row xl:items-center justify-between gap-8">
@@ -317,7 +259,7 @@
                                 <h1 className="text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-300 to-emerald-400">
                                     人機上班專用任務追蹤
                                 </h1>
-                                <p className="text-slate-400 text-[10px] font-bold tracking-[0.4em] uppercase mt-1">Nature Scenic Edition v3.8</p>
+                                <p className="text-slate-400 text-[10px] font-bold tracking-[0.4em] uppercase mt-1">Nature Pro Edition v3.9</p>
                             </div>
                             <div className="flex bg-black/40 p-1.5 rounded-2xl border border-white/10 shadow-xl">
                                 <button onClick={() => setView('grid')} className={`px-8 py-2.5 rounded-xl text-xs font-black uppercase transition-all ${view === 'grid' ? 'bg-blue-600 text-white shadow-lg' : 'text-white/40 hover:text-white/60'}`}>主矩陣</button>
@@ -343,7 +285,21 @@
 
                     {view === 'grid' ? (
                         <>
-                            <form onSubmit={addProject} className="mb-14 flex gap-4 max-w-4xl">
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                if (!newProjTitle.trim()) return;
+                                const newProj = { 
+                                    id: Date.now(), 
+                                    title: newProjTitle, 
+                                    isPinned: false,
+                                    subtasks: [],
+                                    notes: "",
+                                    deadline: "",
+                                    gradientIndex: Math.floor(Math.random() * GRADIENTS.length)
+                                };
+                                setTasks([newProj, ...tasks]);
+                                setNewProjTitle("");
+                            }} className="mb-14 flex gap-4 max-w-4xl">
                                 <input className="flex-1 bg-black/40 border border-white/10 rounded-2xl text-xl text-white placeholder-slate-500 px-8 py-5 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all shadow-2xl" placeholder="建立下一個大計畫..." value={newProjTitle} onChange={e => setNewProjTitle(e.target.value)} />
                                 <button className="bg-blue-600 text-white px-10 py-5 rounded-2xl font-black text-xl hover:bg-blue-500 transition-all shadow-xl active:scale-95">＋</button>
                             </form>
@@ -379,13 +335,12 @@
                                                             <span className="truncate">{s.text}</span>
                                                         </div>
                                                     ))}
-                                                    {total > 3 && <p className="text-xs font-black text-white/30 pl-6 italic">＋ {total - 3} more operational tasks</p>}
+                                                    {total > 3 && <p className="text-xs font-black text-white/30 pl-6 italic">＋ {total - 3} more tasks</p>}
                                                 </div>
 
-                                                {/* 備註預覽：點擊開啟備註 Modal */}
                                                 {task.notes && (
                                                     <div className="mt-4 p-4 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-all cursor-zoom-in" onClick={(e) => { e.stopPropagation(); setSelectedNoteId(task.id); }}>
-                                                        <p className="text-[11px] font-bold text-blue-300 uppercase mb-1 tracking-tighter">📝 點擊查看詳細備註</p>
+                                                        <p className="text-[11px] font-bold text-blue-300 uppercase mb-1 tracking-tighter">📝 查看備註內容</p>
                                                         <p className="text-xs text-slate-300 line-clamp-2 italic leading-relaxed">{task.notes}</p>
                                                     </div>
                                                 )}
@@ -409,7 +364,7 @@
                                     <div className="glass p-10 rounded-[3rem]">
                                         <h2 className="text-3xl font-black text-white mb-8 flex items-center gap-3 border-b border-white/10 pb-6">
                                             ⚙️ 常規控制
-                                            <button onClick={() => { setRecForm({ projectId: '', text: '', dayOfMonth: 1, notes: '' }); setEditingRecurringId(null); setShowRecurringForm(true); }} className="ml-auto bg-white/10 text-white px-5 py-2.5 rounded-2xl text-xs font-black uppercase hover:bg-white/20 transition-all border border-white/10">＋ 新增任務</button>
+                                            <button onClick={() => { setRecForm({ projectId: '', text: '', dayOfMonth: 1, notes: '' }); setEditingRecurringId(null); setShowRecurringForm(true); }} className="ml-auto bg-white/10 text-white px-5 py-2.5 rounded-2xl text-xs font-black uppercase hover:bg-white/20 transition-all border border-white/10">＋ 新增</button>
                                         </h2>
                                         <div className="space-y-6 max-h-[700px] overflow-y-auto custom-scrollbar pr-3">
                                             {recurringTasks.map(rt => {
@@ -417,18 +372,22 @@
                                                 const currentMonthKey = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
                                                 const isDoneThisMonth = rt.completions.includes(currentMonthKey);
                                                 return (
-                                                    <div key={rt.id} className={`border-2 p-8 rounded-[2.5rem] group relative transition-all ${isDoneThisMonth ? 'bg-emerald-500/10 border-emerald-500/20 opacity-50' : 'bg-black/30 border-white/5 hover:border-white/20 hover:bg-black/40'}`}>
+                                                    <div key={rt.id} className={`border-2 p-8 rounded-[2.5rem] group relative transition-all ${isDoneThisMonth ? 'bg-emerald-500/10 border-emerald-500/20 opacity-50' : 'bg-black/30 border-white/5 hover:border-white/20'}`}>
                                                         <div className="flex justify-between items-start mb-3">
                                                             <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest bg-purple-400/10 px-3 py-1 rounded-lg">{proj?.title || '未分類'}</span>
                                                             <div className="flex gap-3">
-                                                                <button onClick={() => startEditRecurring(rt)} className="text-white/30 hover:text-blue-400 text-xs font-bold opacity-0 group-hover:opacity-100">編輯</button>
+                                                                <button onClick={() => {
+                                                                    setRecForm({ projectId: rt.projectId, text: rt.text, dayOfMonth: rt.dayOfMonth, notes: rt.notes });
+                                                                    setEditingRecurringId(rt.id);
+                                                                    setShowRecurringForm(true);
+                                                                }} className="text-white/30 hover:text-blue-400 text-xs font-bold opacity-0 group-hover:opacity-100">編輯</button>
                                                                 <button onClick={() => confirm('刪除？') && setRecurringTasks(recurringTasks.filter(t => t.id !== rt.id))} className="text-white/30 hover:text-red-500 text-xs font-bold opacity-0 group-hover:opacity-100">✕</button>
                                                             </div>
                                                         </div>
-                                                        <h4 className="text-white text-xl font-black mb-6 cursor-pointer" onClick={() => startEditRecurring(rt)}>{rt.text}</h4>
+                                                        <h4 className="text-white text-xl font-black mb-6 cursor-pointer">{rt.text}</h4>
                                                         <div className="flex items-center justify-between">
                                                             <span className="text-[11px] font-bold text-white/40">每月 {rt.dayOfMonth} 號</span>
-                                                            <button onClick={() => toggleRecurringDone(rt.id)} className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase transition-all shadow-2xl ${isDoneThisMonth ? 'bg-emerald-500 text-white' : 'bg-indigo-600 text-white hover:brightness-125'}`}>
+                                                            <button onClick={() => toggleRecurringDone(rt.id)} className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase transition-all ${isDoneThisMonth ? 'bg-emerald-500 text-white' : 'bg-indigo-600 text-white hover:brightness-125'}`}>
                                                                 {isDoneThisMonth ? '✓ 已同步' : '標記完成'}
                                                             </button>
                                                         </div>
@@ -464,11 +423,15 @@
                                                 const currentMonthKey = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
                                                 const isToday = day === new Date().getDate() && currentDate.getMonth() === new Date().getMonth();
                                                 return (
-                                                    <div key={day} className={`min-h-[140px] p-4 rounded-[2rem] border-2 transition-all flex flex-col group ${isToday ? 'bg-blue-600/20 border-blue-400/50 shadow-[inset_0_0_20px_rgba(59,130,246,0.3)]' : 'bg-black/20 border-white/5 hover:border-white/20 hover:bg-black/30'}`}>
+                                                    <div key={day} className={`min-h-[140px] p-4 rounded-[2rem] border-2 transition-all flex flex-col group ${isToday ? 'bg-blue-600/20 border-blue-400/50 shadow-[inset_0_0_20px_rgba(59,130,246,0.3)]' : 'bg-black/20 border-white/5 hover:border-white/20'}`}>
                                                         <span className={`text-sm font-black ${isToday ? 'text-blue-400 scale-125' : 'text-white/30'}`}>{day}</span>
                                                         <div className="mt-4 space-y-2 overflow-y-auto custom-scrollbar flex-1">
                                                             {dayTasks.map(dt => (
-                                                                <div key={dt.id} onClick={() => startEditRecurring(dt)} className={`text-[10px] p-2.5 rounded-xl font-bold transition-all cursor-pointer border shadow-lg ${dt.completions.includes(currentMonthKey) ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 opacity-30 line-through' : 'bg-purple-600 text-white border-purple-400/40 hover:scale-105'}`}>{dt.text}</div>
+                                                                <div key={dt.id} onClick={() => {
+                                                                    setRecForm({ projectId: dt.projectId, text: dt.text, dayOfMonth: dt.dayOfMonth, notes: dt.notes });
+                                                                    setEditingRecurringId(dt.id);
+                                                                    setShowRecurringForm(true);
+                                                                }} className={`text-[10px] p-2.5 rounded-xl font-bold transition-all cursor-pointer border shadow-lg ${dt.completions.includes(currentMonthKey) ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 opacity-30 line-through' : 'bg-purple-600 text-white border-purple-400/40 hover:scale-105'}`}>{dt.text}</div>
                                                             ))}
                                                         </div>
                                                     </div>
@@ -481,7 +444,6 @@
                         </div>
                     )}
 
-                    {/* 專案備註大彈窗 (Note Modal) */}
                     {selectedNoteId && noteTask && (
                         <div className="fixed inset-0 z-[70] flex items-center justify-center p-8">
                             <div className="absolute inset-0 bg-black/85 backdrop-blur-lg" onClick={() => setSelectedNoteId(null)}></div>
@@ -493,12 +455,7 @@
                                     </div>
                                     <button onClick={() => setSelectedNoteId(null)} className="text-white/20 hover:text-white text-4xl p-2 transition-colors">✕</button>
                                 </div>
-                                <textarea 
-                                    className="flex-1 bg-white/5 border border-white/10 rounded-3xl p-8 text-lg text-slate-200 focus:border-blue-500/50 outline-none resize-none leading-relaxed custom-scrollbar font-medium"
-                                    placeholder="輸入這個專案的長篇筆記或思考過程..."
-                                    value={noteTask.notes}
-                                    onChange={e => setTasks(tasks.map(t => t.id === noteTask.id ? {...t, notes: e.target.value} : t))}
-                                />
+                                <textarea className="flex-1 bg-white/5 border border-white/10 rounded-3xl p-8 text-lg text-slate-200 focus:border-blue-500/50 outline-none resize-none leading-relaxed custom-scrollbar font-medium" placeholder="筆記..." value={noteTask.notes} onChange={e => setTasks(tasks.map(t => t.id === noteTask.id ? {...t, notes: e.target.value} : t))} />
                                 <div className="mt-8 flex justify-center">
                                     <button onClick={() => setSelectedNoteId(null)} className="bg-white text-black px-12 py-4 rounded-[2rem] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-400 hover:text-white transition-all active:scale-95">確認保存</button>
                                 </div>
@@ -506,7 +463,6 @@
                         </div>
                     )}
 
-                    {/* 常規任務編輯 Modal */}
                     {showRecurringForm && (
                         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6">
                             <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowRecurringForm(false)}></div>
@@ -529,15 +485,24 @@
                                         <input type="number" min="1" max="31" className="w-full bg-black/20 border border-white/10 rounded-2xl p-5 text-white outline-none focus:border-purple-500 font-black text-xl text-center" value={recForm.dayOfMonth} onChange={e => setRecForm({...recForm, dayOfMonth: parseInt(e.target.value) || 1})} />
                                     </div>
                                     <div className="flex gap-4 pt-6">
-                                        <button onClick={() => setShowRecurringForm(false)} className="flex-1 text-white/30 font-black uppercase py-4 hover:text-white transition-all">取消</button>
-                                        <button onClick={saveRecurringTask} className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-[2rem] font-black uppercase py-4 shadow-2xl hover:brightness-125 transition-all">{editingRecurringId ? '更新' : '注入'}</button>
+                                        <button onClick={() => setShowRecurringForm(false)} className="flex-1 text-white/30 font-black uppercase py-4 hover:text-white">取消</button>
+                                        <button onClick={() => {
+                                            if (!recForm.projectId || !recForm.text) return;
+                                            if (editingRecurringId) {
+                                                setRecurringTasks(recurringTasks.map(t => t.id === editingRecurringId ? { ...t, ...recForm } : t));
+                                            } else {
+                                                setRecurringTasks([...recurringTasks, { ...recForm, id: Date.now(), completions: [] }]);
+                                            }
+                                            setRecForm({ projectId: '', text: '', dayOfMonth: 1, notes: '' });
+                                            setEditingRecurringId(null);
+                                            setShowRecurringForm(false);
+                                        }} className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-[2rem] font-black uppercase py-4 shadow-2xl hover:brightness-125 transition-all">{editingRecurringId ? '更新' : '注入'}</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* 專案詳情 Modal */}
                     {selectedTaskId && currentTask && view === 'grid' && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-8 lg:p-16">
                             <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={() => setSelectedTaskId(null)}></div>
@@ -556,34 +521,33 @@
                                     <button onClick={() => setSelectedTaskId(null)} className="text-white/20 hover:text-white text-5xl p-6 transition-colors">✕</button>
                                 </div>
 
-                                <div className="flex-1 overflow-y-auto p-12 space-y-16 custom-scrollbar">
+                                <div className="flex-1 overflow-y-auto p-12 space-y-10 custom-scrollbar">
                                     <section>
-                                        <label className="text-xs font-black text-blue-400 uppercase tracking-[0.3em] block mb-6 ml-2">Internal Insights / Notes</label>
-                                        <textarea className="w-full bg-black/40 border border-white/10 rounded-[2.5rem] p-10 text-xl text-slate-300 focus:border-blue-500/50 outline-none resize-none h-48 leading-relaxed transition-all font-medium custom-scrollbar" placeholder="點擊此處記錄複雜的需求或思考細節..." value={currentTask.notes} onChange={e => setTasks(tasks.map(t => t.id === currentTask.id ? {...t, notes: e.target.value} : t))} />
+                                        <label className="text-xs font-black text-blue-400 uppercase tracking-[0.3em] block mb-4 ml-2">Internal Notes</label>
+                                        <textarea className="w-full bg-black/40 border border-white/10 rounded-[2.5rem] p-8 text-lg text-slate-300 focus:border-blue-500/50 outline-none resize-none h-32 leading-relaxed transition-all font-medium custom-scrollbar" placeholder="筆記..." value={currentTask.notes} onChange={e => setTasks(tasks.map(t => t.id === currentTask.id ? {...t, notes: e.target.value} : t))} />
                                     </section>
 
                                     <section>
-                                        <div className="flex justify-between items-center mb-10">
+                                        <div className="flex justify-between items-center mb-6">
                                             <label className="text-xs font-black text-blue-400 uppercase tracking-[0.3em] ml-2">Operational Workflow</label>
-                                            <button onClick={() => setActiveBulkId(currentTask.id)} className="text-[11px] font-black text-white/40 hover:text-blue-400 transition-colors bg-white/5 px-6 py-2.5 rounded-full border border-white/10">⚡ 批量處理引擎</button>
+                                            <button onClick={() => setActiveBulkId(currentTask.id)} className="text-[11px] font-black text-white/40 hover:text-blue-400 bg-white/5 px-6 py-2 rounded-full border border-white/10">⚡ 批量處理</button>
                                         </div>
-                                        <div className="space-y-6">
+                                        <div className="space-y-4">
                                             {currentTask.subtasks.map(sub => (
-                                                <div key={sub.id} className="flex flex-col gap-4 p-8 rounded-[2.5rem] bg-black/40 border border-white/5 group hover:bg-black/60 transition-all shadow-xl">
-                                                    <div className="flex items-center gap-8">
-                                                        <button onClick={() => cycleStatus(currentTask.id, sub.id)} className={`status-cycle-btn min-w-[120px] py-4 rounded-[1.5rem] text-xs font-black shadow-2xl uppercase tracking-widest ${STATUS_CONFIG[sub.status].bg} ${STATUS_CONFIG[sub.status].text}`}>{STATUS_CONFIG[sub.status].label}</button>
-                                                        <input className={`flex-1 bg-transparent border-none text-2xl font-bold outline-none focus:ring-0 ${sub.status === 'received' ? 'line-through text-white/20 italic' : 'text-white'}`} value={sub.text} onChange={e => { const newSub = currentTask.subtasks.map(s => s.id === sub.id ? {...s, text: e.target.value} : s); setTasks(tasks.map(t => t.id === currentTask.id ? {...t, subtasks: newSub} : t)); }} />
-                                                        <button onClick={() => { const newSub = currentTask.subtasks.filter(s => s.id !== sub.id); setTasks(tasks.map(t => t.id === currentTask.id ? {...t, subtasks: newSub} : t)); }} className="text-white/10 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-3 text-2xl">✕</button>
+                                                <div key={sub.id} className="flex flex-col gap-2 p-5 rounded-[2rem] bg-black/40 border border-white/5 group hover:bg-black/60 transition-all shadow-xl">
+                                                    <div className="flex items-center gap-6">
+                                                        <button onClick={() => cycleStatus(currentTask.id, sub.id)} className={`status-cycle-btn min-w-[100px] py-3 rounded-[1.2rem] text-[10px] font-black shadow-2xl uppercase tracking-widest ${STATUS_CONFIG[sub.status].bg} ${STATUS_CONFIG[sub.status].text}`}>{STATUS_CONFIG[sub.status].label}</button>
+                                                        <input className={`flex-1 bg-transparent border-none text-xl font-bold outline-none focus:ring-0 ${sub.status === 'received' ? 'line-through text-white/20 italic' : 'text-white'}`} value={sub.text} onChange={e => { const newSub = currentTask.subtasks.map(s => s.id === sub.id ? {...s, text: e.target.value} : s); setTasks(tasks.map(t => t.id === currentTask.id ? {...t, subtasks: newSub} : t)); }} />
+                                                        <button onClick={() => { const newSub = currentTask.subtasks.filter(s => s.id !== sub.id); setTasks(tasks.map(t => t.id === currentTask.id ? {...t, subtasks: newSub} : t)); }} className="text-white/10 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-2 text-xl">✕</button>
                                                     </div>
                                                     
-                                                    {/* 日期自定義修改功能 */}
-                                                    <div className="ml-[152px] flex flex-wrap gap-8">
-                                                        <div className="flex items-center gap-3 bg-blue-500/10 px-4 py-2 rounded-xl border border-blue-500/20 group/date">
-                                                            <span className="text-[10px] font-black text-blue-400 uppercase opacity-60 tracking-tighter">📡 Sent:</span>
+                                                    <div className="ml-[124px] flex flex-wrap gap-6">
+                                                        <div className="flex items-center gap-3 bg-blue-500/10 px-3 py-1.5 rounded-xl border border-blue-500/20">
+                                                            <span className="text-[9px] font-black text-blue-400 uppercase opacity-60">📡 Sent:</span>
                                                             <input type="date" className="date-input-enhanced" value={formatDateForInput(sub.sentDate)} onChange={e => updateSubtaskDate(currentTask.id, sub.id, 'sentDate', e.target.value)} />
                                                         </div>
-                                                        <div className="flex items-center gap-3 bg-emerald-500/10 px-4 py-2 rounded-xl border border-emerald-500/20 group/date">
-                                                            <span className="text-[10px] font-black text-emerald-400 uppercase opacity-60 tracking-tighter">✅ Recv:</span>
+                                                        <div className="flex items-center gap-3 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20">
+                                                            <span className="text-[9px] font-black text-emerald-400 uppercase opacity-60">✅ Recv:</span>
                                                             <input type="date" className="date-input-enhanced" value={formatDateForInput(sub.receivedDate)} onChange={e => updateSubtaskDate(currentTask.id, sub.id, 'receivedDate', e.target.value)} />
                                                         </div>
                                                     </div>
@@ -591,24 +555,34 @@
                                             ))}
                                         </div>
 
-                                        <div className="mt-10">
+                                        <div className="mt-8">
                                             {activeBulkId === currentTask.id ? (
-                                                <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
-                                                    <textarea className="w-full h-48 p-8 bg-black/60 border border-white/10 rounded-[2.5rem] text-white text-lg outline-none focus:border-blue-500 transition-all shadow-inner custom-scrollbar" placeholder="在此貼上多行任務描述..." value={bulkText} onChange={e => setBulkText(e.target.value)} autoFocus />
+                                                <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-300">
+                                                    <textarea className="w-full h-32 p-6 bg-black/60 border border-white/10 rounded-[2rem] text-white text-lg outline-none focus:border-blue-500 transition-all shadow-inner custom-scrollbar" placeholder="貼上任務..." value={bulkText} onChange={e => setBulkText(e.target.value)} autoFocus />
                                                     <div className="flex gap-4 justify-end">
-                                                        <button onClick={() => setActiveBulkId(null)} className="text-white/40 px-8 py-4 text-xs font-black uppercase hover:text-white">取消</button>
-                                                        <button onClick={() => handleBulkAdd(currentTask.id)} className="bg-white text-black px-10 py-4 rounded-[2rem] text-xs font-black uppercase tracking-widest shadow-2xl hover:bg-blue-400 hover:text-white transition-all">執行批量注入</button>
+                                                        <button onClick={() => setActiveBulkId(null)} className="text-white/40 px-8 py-3 text-xs font-black uppercase">取消</button>
+                                                        <button onClick={() => {
+                                                            const lines = bulkText.split('\n').filter(line => line.trim() !== "");
+                                                            if (lines.length === 0) { setActiveBulkId(null); return; }
+                                                            const newSub = lines.map((text, i) => ({ id: Date.now() + i, text: text.trim(), status: 'pending', sentDate: '', receivedDate: '' }));
+                                                            setTasks(tasks.map(t => t.id === currentTask.id ? { ...t, subtasks: [...t.subtasks, ...newSub] } : t));
+                                                            setBulkText(""); setActiveBulkId(null);
+                                                        }} className="bg-white text-black px-10 py-3 rounded-[2rem] text-xs font-black uppercase tracking-widest shadow-2xl hover:bg-blue-400 transition-all">執行注入</button>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <input className="w-full bg-white/5 border border-dashed border-white/20 rounded-[2rem] px-8 py-6 text-lg outline-none focus:border-white/50 transition-all text-center placeholder-white/20 hover:bg-white/10 font-bold" placeholder="+ 輸入新細項並按 Enter 快速建立" onKeyDown={e => { if (e.key === 'Enter') { setBulkText(e.target.value); handleBulkAdd(currentTask.id); e.target.value = ""; } }} />
+                                                <input className="w-full bg-white/5 border border-dashed border-white/20 rounded-[2rem] px-8 py-4 text-base outline-none focus:border-white/50 transition-all text-center placeholder-white/20 hover:bg-white/10 font-bold" placeholder="+ 新增細項" onKeyDown={e => { if (e.key === 'Enter') { 
+                                                    const newSub = { id: Date.now(), text: e.target.value, status: 'pending', sentDate: '', receivedDate: '' };
+                                                    setTasks(tasks.map(t => t.id === currentTask.id ? { ...t, subtasks: [...t.subtasks, newSub] } : t));
+                                                    e.target.value = ""; 
+                                                } }} />
                                             )}
                                         </div>
                                     </section>
                                 </div>
                                 
                                 <div className="p-10 bg-black/60 text-center border-t border-white/10">
-                                    <button onClick={() => confirm('警告：確定要永久銷毀此專案矩陣？') && (setTasks(tasks.filter(t => t.id !== currentTask.id)), setSelectedTaskId(null))} className="text-[11px] font-black text-red-500/40 hover:text-red-500 transition-all uppercase tracking-[0.6em]">Destroy System Permanently</button>
+                                    <button onClick={() => confirm('確定銷毀？') && (setTasks(tasks.filter(t => t.id !== currentTask.id)), setSelectedTaskId(null))} className="text-[11px] font-black text-red-500/40 hover:text-red-500 transition-all uppercase tracking-[0.6em]">Destroy Matrix</button>
                                 </div>
                             </div>
                         </div>
