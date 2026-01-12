@@ -20,8 +20,8 @@
 
         body {
             background-color: #0a0a0a;
-            /* 使用穩定的深色大理石質感背景 */
-            background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.5)), url('pexels-michael-block-1691617-3225525.jpg');
+            /* 使用您提供的圖片來源 */
+            background-image: linear-gradient(rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.45)), url('pexels-michael-block-1691617-3225525.jpg');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -186,7 +186,7 @@
                 return { daysInMonth, firstDay, year, month };
             }, [currentDate]);
 
-            // 修復後的存檔函數
+            // 存檔函數
             const saveRecurringTask = () => {
                 if (!recForm.projectId || !recForm.text) return;
                 if (editingRecurringId) {
@@ -194,7 +194,6 @@
                 } else {
                     setRecurringTasks([...recurringTasks, { ...recForm, id: Date.now(), completions: [] }]);
                 }
-                // 重置表單
                 setRecForm({ 
                     projectId: '', text: '', frequency: 'monthly', dayOfMonth: 1, 
                     startDate: new Date().toISOString().split('T')[0], 
@@ -202,6 +201,25 @@
                 });
                 setEditingRecurringId(null);
                 setShowRecurringForm(false);
+            };
+
+            // 批量處理邏輯
+            const handleBulkAdd = (projectId) => {
+                const lines = bulkText.split('\n').filter(line => line.trim() !== "");
+                if (lines.length === 0) { setActiveBulkId(null); return; }
+                const newSub = lines.map((text, i) => ({ 
+                    id: Date.now() + i, 
+                    text: text.trim(), 
+                    status: 'pending',
+                    sentDate: '',
+                    receivedDate: ''
+                }));
+                setTasks(prev => prev.map(t => t.id === projectId ? { 
+                    ...t, 
+                    subtasks: [...(t.subtasks || []), ...newSub] 
+                } : t));
+                setBulkText(""); 
+                setActiveBulkId(null);
             };
 
             const cycleStatus = (taskId, subId) => {
@@ -241,17 +259,29 @@
                 }));
             };
 
+            // 判定某天是否應顯示常規任務的修復版邏輯
             const isTaskOnDate = (task, dateObj) => {
-                if (task.frequency === 'monthly') return dateObj.getDate() == task.dayOfMonth;
+                const checkDate = new Date(dateObj);
+                checkDate.setHours(0,0,0,0);
+
+                if (task.frequency === 'monthly') {
+                    return checkDate.getDate() == task.dayOfMonth;
+                }
+                
                 if (task.frequency === 'biweekly') {
-                    const start = new Date(task.startDate); start.setHours(0,0,0,0);
-                    const current = new Date(dateObj); current.setHours(0,0,0,0);
-                    const diffDays = Math.round((current - start) / (1000 * 60 * 60 * 24));
+                    const start = new Date(task.startDate);
+                    start.setHours(0,0,0,0);
+                    const diffTime = checkDate - start;
+                    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
                     return diffDays >= 0 && diffDays % 14 === 0;
                 }
+                
                 if (task.frequency === 'quarterly') {
-                    if (dateObj.getDate() != task.dayOfMonth) return false;
-                    const monthDiff = (dateObj.getFullYear() - new Date(task.startDate || Date.now()).getFullYear()) * 12 + (dateObj.getMonth() - (task.startMonth - 1));
+                    if (checkDate.getDate() != task.dayOfMonth) return false;
+                    // 起始月份設定：1, 4, 7, 10 ... 每隔3個月
+                    const startM = parseInt(task.startMonth || 1) - 1; // 0-indexed
+                    const currentM = checkDate.getMonth();
+                    const monthDiff = (checkDate.getFullYear() - new Date().getFullYear()) * 12 + (currentM - startM);
                     return monthDiff >= 0 && monthDiff % 3 === 0;
                 }
                 return false;
@@ -265,7 +295,7 @@
                                 <h1 className="text-3xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-slate-100 via-blue-100 to-slate-400">
                                     人機上班專用任務追蹤
                                 </h1>
-                                <p className="text-white/30 text-[10px] font-bold tracking-[0.6em] uppercase mt-1 tracking-widest">Multi-Frequency Interface v4.8</p>
+                                <p className="text-white/30 text-[10px] font-bold tracking-[0.6em] uppercase mt-1 tracking-widest">Multi-Frequency Interface v4.9.1</p>
                             </div>
                             <div className="flex bg-black/50 p-1.5 rounded-2xl border border-white/5 shadow-xl">
                                 <button onClick={() => setView('grid')} className={`px-10 py-3 rounded-xl text-xs font-black uppercase transition-all ${view === 'grid' ? 'bg-blue-600 text-white shadow-lg' : 'text-white/40 hover:text-white/60'}`}>主矩陣</button>
@@ -274,15 +304,15 @@
                         </div>
                         {view === 'grid' && (
                             <div className="flex gap-4">
-                                <select className="bg-slate-900/95 border border-white/10 rounded-2xl px-6 py-3 text-xs text-white outline-none cursor-pointer font-black" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                                <select className="bg-slate-900/95 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none cursor-pointer font-black" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                                     <option value="all">🔍 所有進度</option>
-                                    <option value="pending">⚠️ 待寄出項</option>
-                                    <option value="sent">📡 已寄出項</option>
-                                    <option value="received">✅ 已完成項</option>
+                                    <option value="pending">⚠️ 待處理 (未寄出)</option>
+                                    <option value="sent">📡 追蹤中 (已寄出)</option>
+                                    <option value="received">✅ 已完成 (已收到)</option>
                                 </select>
                                 <div className="relative group w-80">
-                                    <input type="text" placeholder="快速搜尋矩陣..." className="bg-black/40 border border-white/10 rounded-2xl px-6 py-3 text-xs w-full outline-none focus:border-blue-500 text-white shadow-lg transition-all" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                                    <span className="absolute right-5 top-3.5 opacity-30">🔍</span>
+                                    <input type="text" placeholder="快速搜尋矩陣..." className="bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs w-full outline-none focus:border-blue-500 text-white shadow-lg transition-all" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                                    <span className="absolute right-4 top-2.5 opacity-30">🔍</span>
                                 </div>
                             </div>
                         )}
@@ -361,7 +391,7 @@
                                 </div>
                                 <div className="lg:col-span-2">
                                     <div className="glass p-12 rounded-[3.8rem] h-full flex flex-col">
-                                        <div className="flex justify-between items-center mb-12"><div><h2 className="text-4xl font-black text-white uppercase tracking-tighter font-black">Routine Matrix</h2><p className="text-[11px] font-bold text-purple-400 uppercase tracking-widest mt-2 ml-1 font-black">Enterprise Workflow Control</p></div><div className="flex items-center gap-8 bg-black/60 p-4 rounded-[2.5rem] border border-white/10 shadow-2xl"><button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="w-14 h-14 flex items-center justify-center rounded-[1.5rem] hover:bg-white/10 text-white text-3xl font-black transition-all">←</button><div className="text-center min-w-[220px]"><p className="text-2xl font-black text-white tracking-widest font-black">{currentDate.toLocaleString('zh-TW', { month: 'long', year: 'numeric' })}</p></div><button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="w-14 h-14 flex items-center justify-center rounded-[1.5rem] hover:bg-white/10 text-white text-3xl font-black transition-all">→</button></div></div>
+                                        <div className="flex justify-between items-center mb-12"><div><h2 className="text-4xl font-black text-white uppercase tracking-tighter font-black">Routine Matrix</h2><p className="text-[11px] font-bold text-purple-400 uppercase tracking-widest mt-2 ml-1 font-black">Workflow Control</p></div><div className="flex items-center gap-8 bg-black/60 p-4 rounded-[2.5rem] border border-white/10 shadow-2xl"><button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="w-14 h-14 flex items-center justify-center rounded-[1.5rem] hover:bg-white/10 text-white text-3xl font-black transition-all">←</button><div className="text-center min-w-[220px]"><p className="text-2xl font-black text-white tracking-widest font-black">{currentDate.toLocaleString('zh-TW', { month: 'long', year: 'numeric' })}</p></div><button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="w-14 h-14 flex items-center justify-center rounded-[1.5rem] hover:bg-white/10 text-white text-3xl font-black transition-all">→</button></div></div>
                                         <div className="flex-1 grid grid-cols-7 gap-5">
                                             {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(d => <div key={d} className="text-center text-[11px] font-black text-white/20 pb-8 tracking-[0.3em] uppercase">{d}</div>)}
                                             {Array.from({ length: calendarDays.firstDay }).map((_, i) => <div key={`e-${i}`} className="opacity-0"></div>)}
@@ -424,14 +454,38 @@
                                     <button onClick={() => setSelectedTaskId(null)} className="text-white/20 hover:text-white text-5xl p-5 transition-all font-black hover:rotate-90">✕</button>
                                 </div>
                                 <div className="flex-1 overflow-y-auto p-14 space-y-12 custom-scrollbar">
-                                    <div className="flex gap-8 items-start"><textarea className="flex-1 bg-black/40 border border-white/10 rounded-[3rem] p-10 text-lg text-slate-300 focus:border-blue-500/30 outline-none resize-none h-28 font-medium tracking-tight" placeholder="編輯備註..." value={currentTask.notes} onChange={e => setTasks(tasks.map(t => t.id === currentTask.id ? {...t, notes: e.target.value} : t))} /><button onClick={() => setActiveBulkId(currentTask.id)} className="text-[11px] font-black text-blue-300 bg-blue-500/10 px-10 py-10 rounded-[3rem] border border-blue-400/20 hover:bg-blue-400/20 transition-all uppercase tracking-widest shadow-xl">⚡ 批量處理</button></div>
+                                    <div className="flex gap-8 items-start">
+                                        <textarea className="flex-1 bg-black/40 border border-white/10 rounded-[3rem] p-10 text-lg text-slate-300 focus:border-blue-500/30 outline-none resize-none h-28 font-medium tracking-tight" placeholder="編輯備註..." value={currentTask.notes} onChange={e => setTasks(tasks.map(t => t.id === currentTask.id ? {...t, notes: e.target.value} : t))} />
+                                        <button onClick={() => setActiveBulkId(currentTask.id)} className="text-[11px] font-black text-blue-300 bg-blue-500/10 px-10 py-10 rounded-[3rem] border border-blue-400/20 hover:bg-blue-400/20 transition-all uppercase tracking-widest shadow-xl font-black">⚡ 批量處理</button>
+                                    </div>
+
+                                    {/* 修復批量處理 UI */}
+                                    {activeBulkId === currentTask.id && (
+                                        <div className="animate-in slide-in-from-bottom-2 duration-300 mt-4 shadow-2xl">
+                                            <textarea 
+                                                className="w-full h-48 p-10 bg-black/80 border-2 border-blue-500/30 rounded-[3.5rem] text-white text-lg outline-none custom-scrollbar font-medium" 
+                                                placeholder="在此貼上多行任務內容..." 
+                                                value={bulkText} 
+                                                onChange={e => setBulkText(e.target.value)} 
+                                                autoFocus 
+                                            />
+                                            <div className="flex gap-5 justify-end mt-5 px-6">
+                                                <button onClick={() => { setActiveBulkId(null); setBulkText(""); }} className="text-white/40 px-8 font-black uppercase hover:text-white transition-all">取消</button>
+                                                <button 
+                                                    onClick={() => handleBulkAdd(currentTask.id)} 
+                                                    className="bg-blue-600 text-white px-12 py-4 rounded-[2.2rem] font-black uppercase text-sm shadow-2xl hover:bg-blue-400 active:scale-95 transition-all"
+                                                >注入任務</button>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="space-y-4">
                                         {(currentTask.subtasks || []).map(sub => (
                                             <div key={sub.id} className="flex flex-col gap-1.5 p-5 rounded-[2.2rem] bg-black/30 border border-white/5 group hover:bg-black/60 transition-all shadow-xl">
                                                 <div className="flex items-center gap-8">
                                                     <button onClick={() => cycleStatus(currentTask.id, sub.id)} className={`min-w-[120px] py-3 rounded-2xl text-[11px] font-black uppercase status-btn-refined transition-all ${STATUS_CONFIG[sub.status].bg} text-white hover:brightness-125`}>{STATUS_CONFIG[sub.status].label}</button>
                                                     <input className={`flex-1 bg-transparent border-none text-xl font-bold outline-none focus:ring-0 ${sub.status === 'received' ? 'line-through text-white/20 italic' : 'text-white'}`} value={sub.text} onChange={e => { const newSub = currentTask.subtasks.map(s => s.id === sub.id ? {...s, text: e.target.value} : s); setTasks(tasks.map(t => t.id === currentTask.id ? {...t, subtasks: newSub} : t)); }} />
-                                                    <button onClick={() => { const newSub = currentTask.subtasks.filter(s => s.id !== sub.id); setTasks(tasks.map(t => t.id === currentTask.id ? {...t, subtasks: newSub} : t)); }} className="text-white/10 hover:text-red-500 opacity-0 group-hover:opacity-100 p-2 text-2xl transition-all">✕</button>
+                                                    <button onClick={() => { const newSub = currentTask.subtasks.filter(s => s.id !== sub.id); setTasks(tasks.map(t => t.id === currentTask.id ? {...t, subtasks: newSub} : t)); }} className="text-white/10 hover:text-red-500 opacity-0 group-hover:opacity-100 p-2 text-2xl transition-all font-black">✕</button>
                                                 </div>
                                                 {(sub.sentDate || sub.receivedDate) && (
                                                     <div className="ml-[152px] flex gap-10 text-[11px] font-black uppercase tracking-[0.2em]">
@@ -442,7 +496,7 @@
                                             </div>
                                         ))}
                                     </div>
-                                    <input className="w-full bg-white/5 border border-dashed border-white/10 rounded-[3rem] px-10 py-8 text-xl text-center placeholder-white/10 hover:bg-white/10 outline-none font-bold mt-6 transition-all" placeholder="+ 輸入新待辦" onKeyDown={e => { if (e.key === 'Enter' && e.target.value.trim()) { const newSub = { id: Date.now(), text: e.target.value, status: 'pending', sentDate: '', receivedDate: '' }; setTasks(tasks.map(t => t.id === currentTask.id ? { ...t, subtasks: [...(t.subtasks || []), newSub] } : t)); e.target.value = ""; } }} />
+                                    <input className="w-full bg-white/5 border border-dashed border-white/10 rounded-[3rem] px-10 py-8 text-xl text-center placeholder-white/10 hover:bg-white/10 outline-none font-bold mt-6 transition-all" placeholder="+ 輸入單個新待辦" onKeyDown={e => { if (e.key === 'Enter' && e.target.value.trim()) { const newSub = { id: Date.now(), text: e.target.value, status: 'pending', sentDate: '', receivedDate: '' }; setTasks(tasks.map(t => t.id === currentTask.id ? { ...t, subtasks: [...(t.subtasks || []), newSub] } : t)); e.target.value = ""; } }} />
                                 </div>
                                 <div className="p-12 bg-black/60 text-center border-t border-white/10"><button onClick={() => confirm('⚠️ 確定永久刪除？') && (setTasks(tasks.filter(t => t.id !== currentTask.id)), setSelectedTaskId(null))} className="text-[11px] font-black text-red-500/30 hover:text-red-500 uppercase tracking-[1em] transition-all hover:tracking-[1.2em]">Destroy Matrix</button></div>
                             </div>
@@ -450,7 +504,7 @@
                     )}
                     
                     <footer className="mt-24 text-center opacity-20 text-[11px] font-black tracking-[2em] uppercase">
-                        Man-Machine Multi-Freq Interface Online • Marble Horizon v4.8
+                        Man-Machine Interface Online • Marble Horizon v4.9.1
                     </footer>
                 </div>
             );
