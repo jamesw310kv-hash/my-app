@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NYC 行程 6/13–6/14</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #F5F0E8;
+    --ink: #1A1612;
+    --rust: #C4451A;
+    --gold: #D4A84B;
+    --sage: #4A6741;
+    --mist: #E8E2D9;
+    --light-rust: #F0E8E3;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+  }
+
+  /* HERO */
+  .hero {
+    background: var(--ink);
+    color: var(--cream);
+    padding: 60px 40px 50px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: 'NYC';
+    position: absolute;
+    right: -20px;
+    top: -30px;
+    font-family: 'Playfair Display', serif;
+    font-size: 220px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.04);
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  .hero-label {
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 16px;
+  }
+
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(36px, 8vw, 72px);
+    font-weight: 700;
+    line-height: 1.05;
+    margin-bottom: 20px;
+  }
+
+  .hero h1 em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    margin-top: 28px;
+    padding-top: 28px;
+    border-top: 1px solid rgba(255,255,255,0.15);
+  }
+
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .meta-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity: 0.5;
+  }
+
+  .meta-value {
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  /* TRANSIT BANNER */
+  .transit {
+    background: var(--rust);
+    color: white;
+    padding: 16px 40px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .transit-icon { font-size: 18px; }
+
+  /* DAYS CONTAINER */
+  .days {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 48px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 56px;
+  }
+
+  /* DAY SECTION */
+  .day-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .day-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 72px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--mist);
+    -webkit-text-stroke: 2px var(--ink);
+  }
+
+  .day-info { flex: 1; }
+
+  .day-date {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--rust);
+    margin-bottom: 4px;
+  }
+
+  .day-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    font-weight: 700;
+  }
+
+  /* STOPS */
+  .stops {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+
+  .stops::before {
+    content: '';
+    position: absolute;
+    left: 52px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--mist);
+    z-index: 0;
+  }
+
+  .stop {
+    display: grid;
+    grid-template-columns: 104px 1fr;
+    gap: 0;
+    position: relative;
+    z-index: 1;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .stop:nth-child(1) { animation-delay: 0.1s; }
+  .stop:nth-child(2) { animation-delay: 0.2s; }
+  .stop:nth-child(3) { animation-delay: 0.3s; }
+  .stop:nth-child(4) { animation-delay: 0.4s; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .stop-time-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 0;
+  }
+
+  .stop-time {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    color: var(--rust);
+    white-space: nowrap;
+    background: var(--cream);
+    padding: 2px 8px;
+    z-index: 2;
+  }
+
+  .stop-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--ink);
+    margin: 8px 0 4px;
+    flex-shrink: 0;
+  }
+
+  .stop-duration {
+    font-size: 11px;
+    color: #999;
+    writing-mode: horizontal-tb;
+  }
+
+  .stop-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 12px 0 12px 20px;
+    border: 1px solid var(--mist);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: default;
+  }
+
+  .stop-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  }
+
+  .stop-category {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .cat-culture { color: var(--sage); }
+  .cat-nature { color: #5B8A6A; }
+  .cat-food { color: var(--rust); }
+  .cat-shopping { color: #8B6A9A; }
+  .cat-art { color: #2E6B9A; }
+  .cat-landmark { color: var(--gold); }
+
+  .stop-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .stop-desc {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #555;
+    margin-bottom: 12px;
+  }
+
+  .stop-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--mist);
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .tag.highlight {
+    background: var(--light-rust);
+    color: var(--rust);
+  }
+
+  /* MAP BUTTON */
+  .map-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--rust);
+    text-decoration: none;
+    letter-spacing: 1px;
+    margin-top: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+
+  .map-btn:hover { border-color: var(--rust); }
+
+  /* TIPS */
+  .tips-section {
+    background: var(--ink);
+    color: var(--cream);
+    padding: 40px;
+    margin: 0 24px 48px;
+    border-radius: 16px;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .tips-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--gold);
+  }
+
+  .tips-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+  }
+
+  .tip-item {
+    padding: 16px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+  }
+
+  .tip-icon { font-size: 20px; margin-bottom: 8px; }
+  .tip-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .tip-body { font-size: 12px; opacity: 0.6; line-height: 1.6; }
+
+  /* TICKET REMINDER */
+  .ticket-reminder {
+    background: var(--light-rust);
+    border-left: 4px solid var(--rust);
+    padding: 20px 24px;
+    margin: 0 24px 24px;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 0 8px 8px 0;
+  }
+
+  .ticket-reminder h3 {
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--rust);
+    margin-bottom: 12px;
+  }
+
+  .ticket-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .ticket-list li {
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ticket-list a {
+    color: var(--rust);
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 1px solid var(--rust);
+  }
+
+
+  .transit-step {
+    font-size: 12px;
+    background: #F0F4FF;
+    border-left: 3px solid #2E6B9A;
+    padding: 8px 12px;
+    border-radius: 0 6px 6px 0;
+    margin: 10px 0 6px;
+    color: #1A1612;
+    line-height: 1.6;
+  }
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 32px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #aaa;
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-label">Manhattan · June 2026</div>
+  <h1>New York<br><em>City</em> Trip</h1>
+  <div class="hero-meta">
+    <div class="meta-item">
+      <span class="meta-label">日期</span>
+      <span class="meta-value">6/13 – 6/14</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">出發地</span>
+      <span class="meta-value">Edison, NJ</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">人數</span>
+      <span class="meta-value">2人</span>
+    </div>
+  </div>
+</div>
+
+<!-- TRANSIT -->
+<div class="transit">
+  <span class="transit-icon">🚂</span>
+  <span><strong>交通：</strong>Crowne Plaza Edison → 叫Uber到Edison火車站（$8–12，5分鐘）→ NJ Transit Northeast Corridor Line搭到Penn Station（34街，約58分鐘，$9–16）→ 地鐵轉乘｜每30分鐘一班｜
+  <a href="https://www.njtransit.com/train-to" target="_blank" style="color:#FFD580;font-weight:600;text-decoration:underline;">查即時時刻表 →</a></span>
+</div>
+
+<!-- TRAIN SCHEDULE BOX -->
+<div style="background:#FFF8EE;border-left:4px solid #D4A84B;padding:20px 24px;max-width:900px;margin:24px auto 0;border-radius:0 8px 8px 0;">
+  <h3 style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#D4A84B;margin-bottom:12px;">🚂 火車班次參考（Edison → Penn Station）</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:#1A1612;">去程推薦班次（週六/日）</div>
+      <div style="font-size:12px;line-height:2;color:#555;">
+        ⏰ 08:30 → Penn Station 09:28<br>
+        ⏰ 09:00 → Penn Station 09:58<br>
+        ⏰ 09:30 → Penn Station 10:28<br>
+        ⏰ 10:00 → Penn Station 10:58<br>
+        <span style="color:#999;font-size:11px;">每30分鐘一班，建議搭09:00或09:30</span>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:#1A1612;">回程參考（Penn Station → Edison）</div>
+      <div style="font-size:12px;line-height:2;color:#555;">
+        ⏰ 18:00 → Edison 18:58<br>
+        ⏰ 18:30 → Edison 19:28<br>
+        ⏰ 19:00 → Edison 19:58<br>
+        ⏰ 20:00 → Edison 20:58<br>
+        <span style="color:#999;font-size:11px;">依當天行程決定，每30分鐘有班</span>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:12px;font-size:11px;color:#999;">* 班次為參考，出發前請至 <a href="https://www.njtransit.com/train-to" target="_blank" style="color:#C4451A;">njtransit.com</a> 或下載 <strong>NJ Transit App</strong> 確認即時時刻表</div>
+</div>
+
+<!-- TICKET REMINDER -->
+<div class="ticket-reminder" style="margin-top:32px;">
+  <h3>🎟 提前訂票（現在就可以買）</h3>
+  <ul class="ticket-list">
+    <li>🏛 MET — $30/人 → <a href="https://www.metmuseum.org/visit" target="_blank">metmuseum.org</a></li>
+    <li>🎨 MoMA — $30/人 → <a href="https://www.moma.org/visit" target="_blank">moma.org</a></li>
+    <li>🏗 Vessel — $12/人 → <a href="http://buytickets.vesselnyc.com" target="_blank">buytickets.vesselnyc.com</a></li>
+  </ul>
+</div>
+
+<!-- DAYS -->
+<div class="days">
+
+  <!-- DAY 1 -->
+  <div class="day">
+    <div class="day-header">
+      <div class="day-num">01</div>
+      <div class="day-info">
+        <div class="day-date">6月13日 · 週六</div>
+        <div class="day-title">上城文化日</div>
+      </div>
+    </div>
+
+    <div class="stops">
+
+      <div class="stop">
+        <div class="stop-time-col">
+          <div class="stop-time">09:15</div>
+          <div class="stop-dot"></div>
+        </div>
+        <div class="stop-card">
+          <div class="stop-category cat-landmark">🚂 出發</div>
+          <div class="stop-name">Edison → Penn Station</div>
+          <div class="stop-desc">從Crowne Plaza叫Uber到Edison火車站，搭NJ Transit往曼哈頓，50分鐘後抵達Penn Station（34街）。</div>
+          <div class="stop-tags">
+            <span class="tag">NJ Transit</span>
+            <span class="tag">約$9</span>
+            <span class="tag">50分鐘</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stop">
+        <div class="stop-time-col">
+          <div class="stop-time">10:30</div>
+          <div class="stop-dot"></div>
+        </div>
+        <div class="stop-card">
+          <div class="stop-category cat-culture">🏛 博物館</div>
+          <div class="stop-name">The Metropolitan Museum of Art</div>
+          <div class="stop-desc">世界頂級博物館，給3小時。走側門（5th Ave側）等待時間短。必看：埃及館Temple of Dendur、歐洲繪畫廳、希臘羅馬館。週六開到9PM不用趕。</div>
+          <div class="stop-tags">
+            <span class="tag highlight">提前訂票 $30</span>
+            <span class="tag">3小時</span>
+            </div>
+          <div class="transit-step">🚇 Penn Station → MET：搭地鐵 <strong>4/5/6線</strong>，在34 St-Penn Station上車→ 86 St站下車，出站步行5分鐘｜約20分鐘｜$2.90</div>
+          <a class="map-btn" href="https://www.google.com/maps/dir/New+York+Penn+Station/Metropolitan+Museum+of+Art,+1000+5th+Ave,+New+York,+NY+10028" target="_blank">↗ Google Maps 導航</a>
+        </div>
+      </div>
+
+      <div class="stop">
+        <div class="stop-time-col">
+          <div class="stop-time">13:30</div>
+          <div class="stop-dot"></div>
+        </div>
+        <div class="stop-card">
+          <div class="stop-category cat-nature">🌿 公園</div>
+          <div class="stop-name">Central Park — Bethesda Terrace</div>
+          <div class="stop-desc">MET出來走路5分鐘進公園。Bethesda Fountain是打卡必去，Bow Bridge是全紐約最美的橋之一，午後散步拍照最適合。</div>
+          <div class="stop-tags">
+            <span class="tag">免費</span>
+            <span class="tag">1小時</span>
+            </div>
+          <div class="transit-step">🚶 MET → Bethesda Terrace：步行約5分鐘，從MET正門往左進Central Park，沿主路直走即到</div>
+          <a class="map-btn" href="https://www.google.com/maps/dir/Metropolitan+Museum+of+Art/Bethesda+Terrace,+Central+Park,+New+York,+NY" target="_blank">↗ Google Maps 導航</a>
+        </div>
+      </div>
+
+      <div class="stop">
+        <div class="stop-time-col">
+          <div class="stop-time">15:00</div>
+          <div class="stop-dot"></div>
+        </div>
+        <div class="stop-card">
+          <div class="stop-category cat-shopping">🛍 逛街</div>
+          <div class="stop-name">Fifth Avenue — Midtown</div>
+          <div class="stop-desc">搭地鐵往南到Midtown。Saks Fifth Avenue、Nike旗艦店、Zara、H&M沿路都有，週六7PM才關，時間充裕。晚餐在Midtown解決再搭火車回Edison。</div>
+          <div class="stop-tags">
+            <span class="tag">2–3小時</span>
+            </div>
+          <div class="transit-step">🚇 Central Park → Fifth Ave：步行到86 St站，搭 <strong>4/5/6線南行</strong> 到 <strong>51 St站</strong>，出站即Fifth Ave｜約15分鐘｜$2.90</div>
+          <a class="map-btn" href="https://www.google.com/maps/dir/Bethesda+Terrace,+Central+Park/Saks+Fifth+Avenue,+611+5th+Ave,+New+York,+NY+10022" target="_blank">↗ Google Maps 導航</a>
+        </div>
+      </div>
+
+      <div class="stop">
+        <div class="stop-time-col">
+          <div class="stop-time">18:30</div>
+          <div class="stop-dot"></div>
+        </div>
+        <div class="stop-card">
+          <div class="stop-category cat-food">🍽 晚餐</div>
+          <div class="stop-name">晚餐 → 返回Edison</div>
+          <div class="stop-desc">Midtown吃完晚餐後搭火車回Edison，約9點到Crowne Plaza。</div>
+          <div class="stop-tags">
+            <span class="tag">NJ Transit回程</span>
+            <span class="tag">約$9</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- DAY 2 -->
+  <div class="day">
+    <div class="day-header">
+      <div class="day-num">02</div>
+      <div class="day-info">
+        <div class="day-date">6月14日 · 週日</div>
+        <div class="day-title">西城藝術日</div>
+      </div>
+    </div>
+
+    <div class="stops">
+
+      <div class="stop">
+        <div class="stop-time-col">
+          <div class="stop-time">09:15</div>
+          <div class="stop-dot"></div>
+        </div>
+        <div class="stop-card">
+          <div class="stop-category cat-landmark">🚂 出發</div>
+          <div class="stop-name">Edison → Penn Station</div>
+          <div class="stop-desc">同樣從Crowne Plaza叫Uber到火車站，搭NJ Transit到Penn Station，今天MoMA週日5:30關門，要準時出發。</div>
+          <div class="stop-tags">
+            <span class="tag">NJ Transit</span>
+            <span class="tag">約$9</span>
+            <span class="tag highlight">⚠️ MoMA 5:30關</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stop">
+        <div class="stop-time-col">
+          <div class="stop-time">10:30</div>
+          <div class="stop-dot"></div>
+        </div>
+        <div class="stop-card">
+          <div class="stop-category cat-food">🌮 午餐</div>
+          <div class="stop-name">Chelsea Market</div>
+          <div class="stop-desc">紐約最有趣的室內市場，在老工廠建築裡。Los Tacos No.1是排隊名店，另外還有各種亞洲、歐洲小吃。吃完順手逛一圈再出發。</div>
+          <div class="stop-tags">
+            <span class="tag">1.5小時</span>
+            </div>
+          <div class="transit-step">🚇 Penn Station → Chelsea Market：搭 <strong>A/C/E線</strong>，在 34 St-Penn Station上車 → <strong>14 St站</strong>下車，出站步行3分鐘｜約10分鐘｜$2.90</div>
+          <a class="map-btn" href="https://www.google.com/maps/dir/New+York+Penn+Station/Chelsea+Market,+75+9th+Ave,+New+York,+NY+10011" target="_blank">↗ Google Maps 導航</a>
+        </div>
+      </div>
+
+      <div class="stop">
+        <div class="stop-time-col">
+          <div class="stop-time">12:00</div>
+          <div class="stop-dot"></div>
+        </div>
+        <div class="stop-card">
+          <div class="stop-category cat-nature">🌿 公園</div>
+          <div class="stop-name">The High Line</div>
+          <div class="stop-desc">從Chelsea Market出來直接走上去。廢棄高架鐵路改建的空中公園，一路往北走到Hudson Yards，可以看Hudson River和城市天際線，單程約1.5公里。</div>
+          <div class="stop-tags">
+            <span class="tag">免費</span>
+            <span class="tag">1小時</span>
+            </div>
+          <div class="transit-step">🚶 Chelsea Market → High Line：步行2分鐘，從Chelsea Market北側出口出來，走到 9th Ave & 16th St 入口即可上High Line</div>
+          <a class="map-btn" href="https://www.google.com/maps/dir/Chelsea+Market,+75+9th+Ave,+New+York/The+High+Line,+New+York,+NY" target="_blank">↗ Google Maps 導航</a>
+        </div>
+      </div>
+
+      <div class="stop">
+        <div class="stop-time-col">
+          <div class="stop-time">13:15</div>
+          <div class="stop-dot"></div>
+        </div>
+        <div class="stop-card">
+          <div class="stop-category cat-landmark">🏗 地標</div>
+          <div class="stop-name">Vessel — Hudson Yards</div>
+          <div class="stop-desc">High Line走到底就到了。蜂巢狀銅色建築，可以從內部爬上去俯瞰Hudson Yards。開放時間11AM–7PM，票$12。記得提前訂票，電梯等候長建議走樓梯。</div>
+          <div class="stop-tags">
+            <span class="tag highlight">提前訂票 $12</span>
+            <span class="tag">45分鐘</span>
+            </div>
+          <div class="transit-step">🚶 High Line → Vessel：High Line往北走到底自動抵達，出口就在Vessel旁，步行0分鐘</div>
+          <a class="map-btn" href="https://www.google.com/maps/dir/The+High+Line,+New+York/Vessel,+20+Hudson+Yards,+New+York,+NY+10001" target="_blank">↗ Google Maps 導航</a>
+        </div>
+      </div>
+
+      <div class="stop">
+        <div class="stop-time-col">
+          <div class="stop-time">15:00</div>
+          <div class="stop-dot"></div>
+        </div>
+        <div class="stop-card">
+          <div class="stop-category cat-art">🎨 現代藝術</div>
+          <div class="stop-name">MoMA — Museum of Modern Art</div>
+          <div class="stop-desc">週日5:30關門，3點進去還有2.5小時，夠看重點。Van Gogh星夜、Picasso、Dalí全在5樓，直接衝上去。看完再往下慢慢逛。票$30。</div>
+          <div class="stop-tags">
+            <span class="tag highlight">提前訂票 $30</span>
+            <span class="tag">2.5小時</span>
+            <span class="tag highlight">⚠️ 5:30關門</span>
+            </div>
+          <div class="transit-step">🚇 Vessel → MoMA：步行到 34 St-Hudson Yards站，搭 <strong>7線東行</strong> 到 <strong>Times Sq-42 St</strong>，轉 <strong>E線北行</strong> 到 <strong>53 St站</strong>，出站步行2分鐘｜約20分鐘｜$2.90</div>
+          <a class="map-btn" href="https://www.google.com/maps/dir/Vessel,+20+Hudson+Yards,+New+York/Museum+of+Modern+Art,+11+W+53rd+St,+New+York,+NY+10019" target="_blank">↗ Google Maps 導航</a>
+        </div>
+      </div>
+
+      <div class="stop">
+        <div class="stop-time-col">
+          <div class="stop-time">17:30</div>
+          <div class="stop-dot"></div>
+        </div>
+        <div class="stop-card">
+          <div class="stop-category cat-food">🍽 晚餐</div>
+          <div class="stop-name">晚餐 → 返回Edison</div>
+          <div class="stop-desc">Midtown吃晚餐，搭火車回Edison。明天還有工作，早點休息。</div>
+          <div class="stop-tags">
+            <span class="tag">NJ Transit回程</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- TIPS -->
+<div class="tips-section">
+  <div class="tips-title">實用提醒</div>
+  <div class="tips-grid">
+    <div class="tip-item">
+      <div class="tip-icon">🚇</div>
+      <div class="tip-title">交通App</div>
+      <div class="tip-body">下載Citymapper或Google Maps導航地鐵，比MTA官方App好用很多</div>
+    </div>
+    <div class="tip-item">
+      <div class="tip-icon">💳</div>
+      <div class="tip-title">地鐵付款</div>
+      <div class="tip-body">紐約地鐵可以直接刷信用卡感應付款，不用買MetroCard，一次$2.90</div>
+    </div>
+    <div class="tip-item">
+      <div class="tip-icon">👟</div>
+      <div class="tip-title">穿舒適的鞋</div>
+      <div class="tip-body">兩天走路量很大，High Line+Central Park+逛街，穿運動鞋不要穿新鞋</div>
+    </div>
+    <div class="tip-item">
+      <div class="tip-icon">🌤</div>
+      <div class="tip-title">六月天氣</div>
+      <div class="tip-body">紐約六月平均25-28°C，偶有午後雷陣雨，帶一件薄外套和折疊傘</div>
+    </div>
+    <div class="tip-item">
+      <div class="tip-icon">🍕</div>
+      <div class="tip-title">吃什麼</div>
+      <div class="tip-body">Chelsea Market的Los Tacos No.1、Joe's Pizza（Midtown有分店）、Shake Shack發源地在Madison Square Park</div>
+    </div>
+    <div class="tip-item">
+      <div class="tip-icon">📸</div>
+      <div class="tip-title">拍照地點</div>
+      <div class="tip-body">Bow Bridge（Central Park）、Vessel內部往上看、High Line俯瞰Midtown、MET屋頂花園（5-10月開放）</div>
+    </div>
+  </div>
+</div>
+
+<footer>NYC Trip · June 2026 · Have Fun 🗽</footer>
+
+</body>
+</html>
